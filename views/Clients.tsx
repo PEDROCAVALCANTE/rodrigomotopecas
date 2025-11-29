@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2 } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -15,6 +15,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
   // Form State
   const [newClient, setNewClient] = useState({
     name: '',
+    phone: '',
     motorcycle: '',
     value: '',
     dueDate: new Date().toISOString().split('T')[0],
@@ -25,6 +26,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     e.preventDefault();
     onAddClient({
       name: newClient.name,
+      phone: newClient.phone,
       motorcycle: newClient.motorcycle,
       value: parseFloat(newClient.value) || 0,
       dueDate: newClient.dueDate,
@@ -33,6 +35,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     // Reset form
     setNewClient({
       name: '',
+      phone: '',
       motorcycle: '',
       value: '',
       dueDate: new Date().toISOString().split('T')[0],
@@ -70,7 +73,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
           
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            <div className="md:col-span-2">
+            <div className="md:col-span-1">
               <label className="block text-sm font-medium text-gray-600 mb-1">Nome do Cliente</label>
               <input 
                 className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
@@ -79,6 +82,21 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                 onChange={e => setNewClient({...newClient, name: e.target.value})}
                 required
               />
+            </div>
+
+            <div className="md:col-span-1">
+              <label className="block text-sm font-medium text-gray-600 mb-1">Telefone / WhatsApp</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                <input 
+                  type="tel"
+                  className="w-full border border-gray-300 p-2.5 pl-10 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                  placeholder="(00) 00000-0000" 
+                  value={newClient.phone}
+                  onChange={e => setNewClient({...newClient, phone: e.target.value})}
+                  required
+                />
+              </div>
             </div>
 
             <div>
@@ -170,6 +188,12 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
             <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-start">
               <div>
                 <h3 className="font-bold text-gray-800 text-lg">{client.name}</h3>
+                
+                <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
+                  <Phone size={14} className="text-moto-500" />
+                  <span>{client.phone || 'Sem telefone'}</span>
+                </div>
+
                 <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
                   <Bike size={14} />
                   <span>{client.motorcycle}</span>

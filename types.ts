@@ -16,6 +16,7 @@ export interface Employee {
 export interface Client {
   id: string;
   name: string;
+  phone: string; // New field
   motorcycle: string;
   value: number; // Total value of service/debt
   dueDate: string; // YYYY-MM-DD
