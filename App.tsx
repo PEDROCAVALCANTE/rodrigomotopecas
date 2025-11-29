@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, Menu } from 'lucide-react';
-import { Transaction, Employee, TransactionType } from './types';
-import { INITIAL_TRANSACTIONS, INITIAL_EMPLOYEES } from './constants';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, Menu, BookUser } from 'lucide-react';
+import { Transaction, Employee, TransactionType, Client } from './types';
+import { INITIAL_TRANSACTIONS, INITIAL_EMPLOYEES, INITIAL_CLIENTS } from './constants';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
 import { Financials } from './views/Financials';
-import { EmployeeExpenses } from './views/EmployeeExpenses'; // New Import
+import { EmployeeExpenses } from './views/EmployeeExpenses';
+import { ClientsView } from './views/Clients'; // New Import
 import { TransactionModal } from './components/TransactionModal';
 
 // Storage Helpers
@@ -16,10 +17,11 @@ const load = (key: string, fallback: any) => {
 };
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
+  const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'CLIENTS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
   
   // State
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>(TransactionType.EXPENSE_SHOP);
@@ -29,6 +31,7 @@ const App: React.FC = () => {
   useEffect(() => {
     setEmployees(load('moto_employees', INITIAL_EMPLOYEES));
     setTransactions(load('moto_transactions', INITIAL_TRANSACTIONS));
+    setClients(load('moto_clients', INITIAL_CLIENTS));
   }, []);
 
   // Save Data
@@ -39,6 +42,10 @@ const App: React.FC = () => {
   useEffect(() => {
     save('moto_transactions', transactions);
   }, [transactions]);
+
+  useEffect(() => {
+    save('moto_clients', clients);
+  }, [clients]);
 
   // Handlers
   const addTransaction = (t: Omit<Transaction, 'id'>) => {
@@ -68,6 +75,18 @@ const App: React.FC = () => {
   const deleteEmployee = (id: string) => {
     if(confirm('Tem certeza? Isso não apagará as despesas históricas deste funcionário.')) {
       setEmployees(prev => prev.filter(e => e.id !== id));
+    }
+  };
+
+  // Client Handlers
+  const addClient = (c: Omit<Client, 'id'>) => {
+    const newClient = { ...c, id: crypto.randomUUID() };
+    setClients(prev => [newClient, ...prev]);
+  };
+
+  const deleteClient = (id: string) => {
+    if(confirm('Tem certeza que deseja remover este cliente?')) {
+      setClients(prev => prev.filter(c => c.id !== id));
     }
   };
 
@@ -119,6 +138,7 @@ const App: React.FC = () => {
         <nav className="flex-1 p-4 space-y-2 mt-2">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
           <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" />
+          <NavItem view="CLIENTS" icon={BookUser} label="Clientes" />
           <div className="pt-4 pb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             <span className="w-8 h-[1px] bg-gray-700"></span> Financeiro
           </div>
@@ -167,6 +187,13 @@ const App: React.FC = () => {
               onDeleteEmployee={deleteEmployee}
             />
           )}
+          {currentView === 'CLIENTS' && (
+            <ClientsView 
+              clients={clients} 
+              onAddClient={addClient} 
+              onDeleteClient={deleteClient}
+            />
+          )}
           {currentView === 'EXPENSES_SHOP' && (
             <Financials 
               transactions={transactions} 
@@ -197,13 +224,13 @@ const App: React.FC = () => {
           <Users size={20} />
           <span className="text-[10px] font-medium">Equipe</span>
         </button>
+        <button onClick={() => setCurrentView('CLIENTS')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'CLIENTS' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
+          <BookUser size={20} />
+          <span className="text-[10px] font-medium">Clientes</span>
+        </button>
         <button onClick={() => setCurrentView('EXPENSES_SHOP')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'EXPENSES_SHOP' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
           <Receipt size={20} />
           <span className="text-[10px] font-medium">Loja</span>
-        </button>
-        <button onClick={() => setCurrentView('EXPENSES_EMP')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'EXPENSES_EMP' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
-          <Users size={20} />
-          <span className="text-[10px] font-medium">Func.</span>
         </button>
       </div>
 

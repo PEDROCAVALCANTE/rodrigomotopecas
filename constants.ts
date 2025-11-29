@@ -1,4 +1,4 @@
-import { Employee, Transaction, TransactionType } from './types';
+import { Employee, Transaction, TransactionType, Client } from './types';
 
 export const CATEGORIES = [
   'Peças',
@@ -32,6 +32,25 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   { id: '4', name: 'Kaique Alves', role: 'Mecânico', fixedSalary: 1800, commissionRate: 0 },
   { id: '5', name: 'Kaique Gabriel', role: 'Mecânico', fixedSalary: 2200, commissionRate: 0 },
   { id: '6', name: 'Bruno', role: 'Vendedor', fixedSalary: 3000, commissionRate: 0 },
+];
+
+export const INITIAL_CLIENTS: Client[] = [
+  { 
+    id: '1', 
+    name: 'Marcos Silva', 
+    motorcycle: 'Honda Titan 160', 
+    value: 450.00, 
+    dueDate: '2023-11-15', 
+    installments: 2 
+  },
+  { 
+    id: '2', 
+    name: 'Ana Oliveira', 
+    motorcycle: 'Yamaha Fazer 250', 
+    value: 1200.00, 
+    dueDate: '2023-11-20', 
+    installments: 4 
+  }
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [

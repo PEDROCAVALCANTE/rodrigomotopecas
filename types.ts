@@ -13,6 +13,16 @@ export interface Employee {
   phone?: string;
 }
 
+export interface Client {
+  id: string;
+  name: string;
+  motorcycle: string;
+  value: number; // Total value of service/debt
+  dueDate: string; // YYYY-MM-DD
+  installments: number; // Number of parcels
+  status?: 'PENDING' | 'PAID'; // Optional status for future use
+}
+
 export interface Transaction {
   id: string;
   date: string; // ISO date string YYYY-MM-DD
