@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Employee, Transaction, TransactionType } from '../types';
-import { User, ChevronRight, ArrowLeft, Save, Plus, Edit2, Trash2, DollarSign, Percent, Wallet } from 'lucide-react';
+import { User, ChevronRight, ArrowLeft, Save, Plus, Edit2, Trash2, Wallet, Percent, Check, Loader2 } from 'lucide-react';
 import { TransactionModal } from '../components/TransactionModal';
 
 interface EmployeeExpensesProps {
@@ -24,6 +24,10 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
+  // UI States for Save Button
+  const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
   // Determine current view state
   const activeEmployee = employees.find(e => e.id === selectedEmpId);
 
@@ -31,7 +35,7 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
   const [tempEmpData, setTempEmpData] = useState<{fixedSalary: string, commissionRate: string}>({ fixedSalary: '', commissionRate: '' });
 
   // Load employee data into temp state when selected
-  React.useEffect(() => {
+  useEffect(() => {
     if (activeEmployee) {
       setTempEmpData({
         fixedSalary: activeEmployee.fixedSalary.toString(),
@@ -53,12 +57,19 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
     e.preventDefault();
     if (!activeEmployee) return;
 
-    onUpdateEmployee({
-      ...activeEmployee,
-      fixedSalary: parseFloat(tempEmpData.fixedSalary) || 0,
-      commissionRate: parseFloat(tempEmpData.commissionRate) || 0,
-    });
-    alert('Dados do funcionário atualizados com sucesso!');
+    setIsSaving(true);
+
+    // Simulate a brief delay for better UX feel
+    setTimeout(() => {
+        onUpdateEmployee({
+            ...activeEmployee,
+            fixedSalary: parseFloat(tempEmpData.fixedSalary) || 0,
+            commissionRate: parseFloat(tempEmpData.commissionRate) || 0,
+        });
+        setIsSaving(false);
+        setShowSuccess(true);
+        setTimeout(() => setShowSuccess(false), 2000);
+    }, 600);
   };
 
   const openAddModal = () => {
@@ -90,7 +101,7 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
     return (
       <div className="space-y-6">
         <h1 className="text-2xl font-bold text-gray-800">Despesas por Funcionário</h1>
-        <p className="text-gray-500">Selecione um funcionário para gerenciar salários, comissões e lançar despesas individuais.</p>
+        <p className="text-gray-500">Selecione um funcionário para editar salário, comissão e gerenciar despesas.</p>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {employees.map(emp => (
@@ -160,7 +171,7 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
                 <input 
                   type="number" 
                   step="0.01"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-2xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-2xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
                   value={tempEmpData.fixedSalary}
                   onChange={e => setTempEmpData({...tempEmpData, fixedSalary: e.target.value})}
                   placeholder="0.00"
@@ -180,7 +191,7 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
                 <input 
                   type="number" 
                   step="0.1"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-800 text-xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
                   value={tempEmpData.commissionRate}
                   onChange={e => setTempEmpData({...tempEmpData, commissionRate: e.target.value})}
                   placeholder="0"
@@ -190,10 +201,29 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
 
             <button 
               type="submit"
-              className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-moto-600/20 active:scale-[0.98]"
+              disabled={isSaving || showSuccess}
+              className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]
+                ${showSuccess 
+                  ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-600/20' 
+                  : 'bg-moto-600 hover:bg-moto-700 text-white shadow-moto-600/20'
+                }`}
             >
-              <Save size={18} />
-              Atualizar Configurações
+              {isSaving ? (
+                <>
+                  <Loader2 size={18} className="animate-spin" />
+                  Salvando...
+                </>
+              ) : showSuccess ? (
+                <>
+                  <Check size={18} />
+                  Atualizado!
+                </>
+              ) : (
+                <>
+                  <Save size={18} />
+                  Atualizar Configurações
+                </>
+              )}
             </button>
           </form>
         </div>

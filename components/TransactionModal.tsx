@@ -100,25 +100,31 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const calc = getCalculatedValues();
 
+  // Style classes for inputs to match the dark screenshot design
+  const inputClass = "w-full px-4 py-3 bg-[#333333] border-transparent focus:ring-2 focus:ring-moto-500 focus:bg-[#404040] text-white rounded-lg placeholder-gray-500 outline-none transition-all resize-none";
+  const labelClass = "block text-sm text-gray-600 mb-1.5 font-medium";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 pb-2">
+          <h2 className="text-xl font-bold text-gray-900">
             {initialData ? 'Editar Lançamento' : 'Novo Lançamento'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-5">
+          
+          {/* Tipo de Movimento */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Movimento</label>
+            <label className={labelClass}>Tipo de Movimento</label>
             <select 
               value={type} 
               onChange={(e) => setType(e.target.value as TransactionType)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moto-500 focus:border-moto-500 outline-none transition-colors"
+              className={inputClass}
               disabled={!!initialData}
             >
               <option value={TransactionType.INCOME}>Receita (Entrada)</option>
@@ -127,14 +133,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </select>
           </div>
 
+          {/* Seleção de Funcionário (Condicional) */}
           {type === TransactionType.EXPENSE_EMPLOYEE && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Funcionário</label>
+            <div className="animate-fade-in">
+              <label className={labelClass}>Funcionário</label>
               <select 
                 value={employeeId} 
                 onChange={(e) => setEmployeeId(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none"
+                className={inputClass}
               >
                 <option value="">Selecione um funcionário...</option>
                 {employees.map(emp => (
@@ -144,19 +151,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           )}
 
+          {/* Data e Valor (Lado a Lado) */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+              <label className={labelClass}>Data</label>
               <input 
                 type="date" 
                 value={date} 
                 onChange={(e) => setDate(e.target.value)}
                 required
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor (R$)</label>
+              <label className={labelClass}>Valor (R$)</label>
               <input 
                 type="number" 
                 step="0.01"
@@ -164,12 +172,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 onChange={(e) => setAmount(e.target.value)}
                 required
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none"
+                className={inputClass}
               />
             </div>
           </div>
 
-          {/* Stone Calculator Toggle - Only for Income */}
+          {/* Calculadora Stone (Aparece apenas em Receitas) */}
           {type === TransactionType.INCOME && !initialData && amount && parseFloat(amount) > 0 && (
             <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
               <button 
@@ -249,34 +257,36 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           )}
 
+          {/* Categoria */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+            <label className={labelClass}>Categoria</label>
             <input 
               list="categories" 
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none"
+              className={inputClass}
+              placeholder="Selecione ou digite..."
             />
             <datalist id="categories">
               {CATEGORIES.map(c => <option key={c} value={c} />)}
             </datalist>
           </div>
 
+          {/* Descrição */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+            <label className={labelClass}>Descrição</label>
             <textarea 
               value={description} 
               onChange={(e) => setDescription(e.target.value)}
               required
               rows={3}
-              placeholder="Detalhes do serviço ou compra..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none"
+              className={inputClass}
             />
           </div>
 
           <button 
             type="submit" 
-            className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-3 px-4 rounded-lg transition-colors mt-4"
+            className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-3.5 px-4 rounded-lg transition-colors mt-2 shadow-lg shadow-moto-600/20"
           >
             {initialData ? 'Atualizar Lançamento' : 'Salvar Lançamento'}
           </button>
