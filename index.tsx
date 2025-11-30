@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
-import './index.css';
+// import './index.css'; // Comentado para o Preview funcionar sem build step. O CSS está no index.html agora.
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -42,8 +42,14 @@ const App: React.FC = () => {
       try {
         setIsLoading(true);
         
-        // 1. Tentar Autenticação Anônima (Resolve erros de "insufficient permissions" se a regra permitir auth)
-        await signInAnonymously(auth);
+        // 1. Tentar Autenticação Anônima (Opcional)
+        // Se falhar (ex: auth/configuration-not-found), apenas logamos e continuamos,
+        // pois o banco pode estar público.
+        try {
+          await signInAnonymously(auth);
+        } catch (authError: any) {
+          console.warn("Aviso: Autenticação Anônima falhou ou não está configurada. Tentando acesso direto.", authError.code);
+        }
 
         // 2. Fetch Employees
         const empSnap = await getDocs(collection(db, 'employees'));
@@ -63,10 +69,10 @@ const App: React.FC = () => {
         setIsDemoMode(false);
 
       } catch (error: any) {
-        console.error("Erro crítico ao conectar Firebase:", error);
+        console.error("Erro crítico ao conectar Firebase (Banco de Dados):", error);
         
-        // FALLBACK: Se der erro de permissão ou conexão, carrega dados locais para não travar o app
-        console.warn("Ativando Modo Demo (Dados Locais) devido ao erro.");
+        // FALLBACK: Se der erro de permissão ou conexão NO BANCO, carrega dados locais
+        console.warn("Ativando Modo Demo (Dados Locais) devido ao erro de conexão com o Banco.");
         setEmployees(INITIAL_EMPLOYEES);
         setTransactions(INITIAL_TRANSACTIONS);
         setClients(INITIAL_CLIENTS);
@@ -245,22 +251,22 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-gray-50 flex-col gap-4">
-        <Loader2 className="w-12 h-12 text-moto-600 animate-spin" />
-        <p className="text-gray-500 font-medium">Carregando sistema...</p>
+      <div className="flex h-screen items-center justify-center bg-[#111] flex-col gap-4">
+        <Loader2 className="w-12 h-12 text-moto-500 animate-spin" />
+        <p className="text-gray-400 font-medium">Carregando RODRIGO MOTOPEÇAS...</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-100 font-sans">
+    <div className="flex h-screen bg-[#111] font-sans text-gray-100">
       
       {/* Sidebar (Desktop) */}
-      <aside className="w-64 bg-gray-900 text-white flex-shrink-0 hidden md:flex flex-col border-r border-gray-800 relative overflow-hidden">
+      <aside className="w-64 bg-black border-r border-gray-800 flex-shrink-0 hidden md:flex flex-col relative overflow-hidden">
         {/* Decorative Background Elements matching the logo style */}
-        <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600"></div>
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600"></div>
         
-        <div className="p-6 flex flex-col items-center gap-3 border-b border-gray-800 bg-gray-900/50">
+        <div className="p-6 flex flex-col items-center gap-3 border-b border-gray-800 bg-black">
            {/* Logo Placeholder / Styled Text */}
            <div className="w-full text-center">
              <div className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-lg mb-3 transform rotate-3">
@@ -286,7 +292,7 @@ const App: React.FC = () => {
           <NavItem view="EXPENSES_EMP" icon={Users} label="Despesa Funcionário" />
         </nav>
 
-        <div className="p-4 border-t border-gray-800 bg-gray-900/50">
+        <div className="p-4 border-t border-gray-800 bg-black">
           <button 
             onClick={() => openNewTransaction()}
             className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-orange-900/20 transform hover:-translate-y-0.5"
@@ -298,18 +304,18 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-gray-50">
+      <main className="flex-1 overflow-y-auto bg-[#121212]">
         
         {/* Aviso de Modo Demo */}
         {isDemoMode && (
-          <div className="bg-red-500 text-white px-4 py-2 text-sm font-bold text-center flex items-center justify-center gap-2">
-            <AlertTriangle size={16} />
-            AVISO: Banco de dados inacessível (Permissões). Usando modo demonstração. As alterações não serão salvas.
+          <div className="bg-red-600 text-white px-4 py-3 text-sm font-bold text-center flex items-center justify-center gap-2 shadow-lg">
+            <AlertTriangle size={18} />
+            AVISO: Não foi possível conectar ao banco de dados. Usando modo offline (Demonstração).
           </div>
         )}
 
         {/* Mobile Header */}
-        <header className="md:hidden bg-gray-900 text-white p-4 flex justify-between items-center sticky top-0 z-20 shadow-md border-b-4 border-orange-500">
+        <header className="md:hidden bg-black text-white p-4 flex justify-between items-center sticky top-0 z-20 shadow-md border-b border-gray-800">
           <div className="flex items-center gap-3">
              <div className="bg-orange-500 p-1.5 rounded-lg">
                 <Wrench size={18} className="text-white" />
@@ -319,7 +325,7 @@ const App: React.FC = () => {
                 <p className="text-[10px] text-orange-400 font-bold tracking-wider leading-none">MOTOPEÇAS</p>
              </div>
           </div>
-          <button onClick={() => openNewTransaction()} className="bg-orange-600 p-2 rounded-full shadow-lg">
+          <button onClick={() => openNewTransaction()} className="bg-orange-600 p-2 rounded-full shadow-lg text-white">
             <PlusCircle size={22} />
           </button>
         </header>
@@ -365,20 +371,20 @@ const App: React.FC = () => {
       </main>
 
       {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-3 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] pb-safe">
-        <button onClick={() => setCurrentView('DASHBOARD')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'DASHBOARD' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0a] border-t border-gray-800 flex justify-around p-3 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.5)] pb-safe">
+        <button onClick={() => setCurrentView('DASHBOARD')} className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-colors ${currentView === 'DASHBOARD' ? 'text-orange-500' : 'text-gray-500'}`}>
           <LayoutDashboard size={20} />
           <span className="text-[10px] font-medium">Início</span>
         </button>
-        <button onClick={() => setCurrentView('EMPLOYEES')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'EMPLOYEES' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
+        <button onClick={() => setCurrentView('EMPLOYEES')} className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-colors ${currentView === 'EMPLOYEES' ? 'text-orange-500' : 'text-gray-500'}`}>
           <Users size={20} />
           <span className="text-[10px] font-medium">Equipe</span>
         </button>
-        <button onClick={() => setCurrentView('CLIENTS')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'CLIENTS' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
+        <button onClick={() => setCurrentView('CLIENTS')} className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-colors ${currentView === 'CLIENTS' ? 'text-orange-500' : 'text-gray-500'}`}>
           <BookUser size={20} />
           <span className="text-[10px] font-medium">Clientes</span>
         </button>
-        <button onClick={() => setCurrentView('EXPENSES_SHOP')} className={`p-2 rounded-lg flex flex-col items-center gap-1 ${currentView === 'EXPENSES_SHOP' ? 'text-orange-600 bg-orange-50' : 'text-gray-400'}`}>
+        <button onClick={() => setCurrentView('EXPENSES_SHOP')} className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-colors ${currentView === 'EXPENSES_SHOP' ? 'text-orange-500' : 'text-gray-500'}`}>
           <Receipt size={20} />
           <span className="text-[10px] font-medium">Loja</span>
         </button>
