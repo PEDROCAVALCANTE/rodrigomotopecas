@@ -10,6 +10,7 @@ export interface Employee {
   role: string;
   fixedSalary: number;
   commissionRate: number; // Percentage
+  bonus?: number; // Gratificação Fixa
   phone?: string;
 }
 

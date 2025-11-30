@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Employee, Transaction, TransactionType } from '../types';
-import { User, ChevronRight, ArrowLeft, Save, Plus, Edit2, Trash2, Wallet, Percent, Check, Loader2 } from 'lucide-react';
+import { User, ChevronRight, ArrowLeft, Save, Plus, Edit2, Trash2, Wallet, Percent, Check, Loader2, Gift } from 'lucide-react';
 import { TransactionModal } from '../components/TransactionModal';
 
 interface EmployeeExpensesProps {
@@ -32,14 +32,15 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
   const activeEmployee = employees.find(e => e.id === selectedEmpId);
 
   // Helper to handle employee updates locally before saving
-  const [tempEmpData, setTempEmpData] = useState<{fixedSalary: string, commissionRate: string}>({ fixedSalary: '', commissionRate: '' });
+  const [tempEmpData, setTempEmpData] = useState<{fixedSalary: string, commissionRate: string, bonus: string}>({ fixedSalary: '', commissionRate: '', bonus: '' });
 
   // Load employee data into temp state when selected
   useEffect(() => {
     if (activeEmployee) {
       setTempEmpData({
         fixedSalary: activeEmployee.fixedSalary.toString(),
-        commissionRate: activeEmployee.commissionRate.toString()
+        commissionRate: activeEmployee.commissionRate.toString(),
+        bonus: (activeEmployee.bonus || 0).toString()
       });
     }
   }, [activeEmployee]);
@@ -65,6 +66,7 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
             ...activeEmployee,
             fixedSalary: parseFloat(tempEmpData.fixedSalary) || 0,
             commissionRate: parseFloat(tempEmpData.commissionRate) || 0,
+            bonus: parseFloat(tempEmpData.bonus) || 0,
         });
         setIsSaving(false);
         setShowSuccess(true);
@@ -195,6 +197,26 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
                   value={tempEmpData.commissionRate}
                   onChange={e => setTempEmpData({...tempEmpData, commissionRate: e.target.value})}
                   placeholder="0"
+                />
+              </div>
+            </div>
+
+            {/* Gratificação Input */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+                Gratificação Fixa
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                  <Gift size={20} className="text-gray-400" />
+                </div>
+                <input 
+                  type="number" 
+                  step="0.01"
+                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
+                  value={tempEmpData.bonus}
+                  onChange={e => setTempEmpData({...tempEmpData, bonus: e.target.value})}
+                  placeholder="0.00"
                 />
               </div>
             </div>

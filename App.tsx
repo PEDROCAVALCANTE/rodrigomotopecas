@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, WifiOff } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, WifiOff, AlertTriangle } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -17,8 +17,8 @@ import {
   updateDoc, 
   deleteDoc, 
   doc, 
-  onSnapshot, 
-  enableIndexedDbPersistence
+  onSnapshot,
+  setDoc
 } from 'firebase/firestore';
 import { signInAnonymously } from 'firebase/auth';
 
@@ -30,7 +30,8 @@ const App: React.FC = () => {
   const [clients, setClients] = useState<Client[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false); // New state to track connection status
+  const [isDemoMode, setIsDemoMode] = useState(false);
+  const [permissionError, setPermissionError] = useState(false); // Novo estado para erro de permissão
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>(TransactionType.EXPENSE_SHOP);
@@ -45,29 +46,52 @@ const App: React.FC = () => {
     let unsubscribeTransactions: () => void;
 
     const startDemoMode = () => {
-      console.warn("Using Local Data (Demo Mode) due to connection error.");
-      setEmployees(INITIAL_EMPLOYEES);
-      setClients(INITIAL_CLIENTS);
-      setTransactions(INITIAL_TRANSACTIONS);
-      setIsDemoMode(true);
-      setIsLoading(false);
+      if (!isDemoMode) { // Evitar logs repetidos
+          console.warn("Using Local Data (Demo Mode).");
+          setEmployees(INITIAL_EMPLOYEES);
+          setClients(INITIAL_CLIENTS);
+          setTransactions(INITIAL_TRANSACTIONS);
+          setIsDemoMode(true);
+          setIsLoading(false);
+      }
+    };
+
+    const handleFirebaseError = (error: any) => {
+        console.error("Firebase Error:", error);
+        if (error.code === 'permission-denied') {
+            setPermissionError(true);
+        }
+        startDemoMode();
     };
 
     const connectToFirebase = async () => {
       try {
-        // Tenta autenticação anônima
-        await signInAnonymously(auth);
+        // Tenta autenticação anônima, mas não bloqueia se falhar (regras podem ser públicas)
+        try {
+            await signInAnonymously(auth);
+        } catch (authErr) {
+            console.warn("Auth Anônima falhou (pode não estar ativada), tentando acesso direto...", authErr);
+        }
         
         // 1. Listen to Employees
         unsubscribeEmployees = onSnapshot(collection(db, 'employees'), 
           (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
             setEmployees(data);
+            
+            // AUTO-SEED: Se o banco estiver vazio, cadastra os funcionários automaticamente
+            if (snapshot.empty && !snapshot.metadata.fromCache) {
+               console.log("Banco de funcionários vazio. Importando automaticamente...");
+               INITIAL_EMPLOYEES.forEach(async (emp) => {
+                  const { id, ...empData } = emp;
+                  await setDoc(doc(db, 'employees', id), empData);
+               });
+            }
+
+            // Se conseguiu ler, limpa erro de permissão
+            setPermissionError(false);
           },
-          (error) => {
-            console.error("Firebase Employee Error:", error);
-            startDemoMode();
-          }
+          handleFirebaseError
         );
 
         // 2. Listen to Clients
@@ -77,8 +101,8 @@ const App: React.FC = () => {
             setClients(data);
           },
           (error) => {
-            console.error("Firebase Client Error:", error);
-            // Don't call startDemoMode here if already called by others to avoid double set
+             // Tratamento silencioso aqui pois o handle já é chamado nos outros
+             console.error("Firebase Client Error", error);
           }
         );
 
@@ -89,16 +113,13 @@ const App: React.FC = () => {
             data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setTransactions(data);
             setIsLoading(false);
+            setPermissionError(false);
           },
-          (error) => {
-            console.error("Firebase Transaction Error:", error);
-            startDemoMode();
-          }
+          handleFirebaseError
         );
 
       } catch (error) {
-        console.warn("Global Connection Error:", error);
-        startDemoMode();
+        handleFirebaseError(error);
       }
     };
 
@@ -123,7 +144,7 @@ const App: React.FC = () => {
       await addDoc(collection(db, 'transactions'), t);
     } catch (error) {
       console.error("Error adding transaction: ", error);
-      alert("Erro ao salvar no banco. Verifique as permissões.");
+      alert("Erro ao salvar. Verifique sua conexão ou regras do banco.");
     }
   };
 
@@ -219,6 +240,24 @@ const App: React.FC = () => {
     }
   };
 
+  // Helper to Seed Database from Constants (Manual Trigger if needed, though auto-seed is preferred)
+  const seedEmployees = async () => {
+    if (!confirm('Deseja importar a lista de funcionários padrão para o banco de dados?')) return;
+    
+    setIsLoading(true);
+    try {
+      for (const emp of INITIAL_EMPLOYEES) {
+          const { id, ...data } = emp; 
+          await setDoc(doc(db, 'employees', id), data);
+      }
+      alert("Funcionários importados com sucesso!");
+    } catch (error) {
+      console.error("Erro na importação:", error);
+      alert("Erro ao importar. Verifique o console.");
+    }
+    setIsLoading(false);
+  };
+
   // Modal Handlers
   const openNewTransaction = (type?: TransactionType) => {
     setEditingTransaction(null);
@@ -304,8 +343,20 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-[#121212] relative">
         
-        {/* Connection Warning Banner */}
-        {isDemoMode && (
+        {/* Permission Error Banner */}
+        {permissionError && (
+          <div className="bg-red-600 text-white text-sm font-bold py-3 px-4 text-center flex flex-col md:flex-row items-center justify-center gap-2 shadow-lg animate-fade-in">
+            <AlertTriangle size={20} className="text-yellow-300" />
+            <span>BLOQUEIO DE SEGURANÇA: O banco de dados está bloqueado.</span>
+            <span className="font-normal opacity-90">
+              Vá no Console Firebase &gt; Firestore &gt; Regras e mude para 
+              <code className="bg-red-800 px-2 py-0.5 rounded ml-1 font-mono text-xs">allow read, write: if true;</code>
+            </span>
+          </div>
+        )}
+
+        {/* Demo Mode Banner (only if permission error is NOT showing, to avoid clutter) */}
+        {isDemoMode && !permissionError && (
           <div className="bg-orange-600 text-white text-xs font-bold py-1 px-4 text-center flex items-center justify-center gap-2">
             <WifiOff size={14} />
             AVISO: Modo Demonstração (Sem conexão com Banco de Dados). As alterações não serão salvas permanentemente.
@@ -345,6 +396,7 @@ const App: React.FC = () => {
                   employees={employees} 
                   onAddEmployee={addEmployee} 
                   onDeleteEmployee={deleteEmployee}
+                  onSeedEmployees={seedEmployees}
                 />
               )}
               {currentView === 'CLIENTS' && (
