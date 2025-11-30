@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2 } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -9,204 +9,63 @@ import { ClientsView } from './views/Clients';
 import { TransactionModal } from './components/TransactionModal';
 import { INITIAL_EMPLOYEES, INITIAL_TRANSACTIONS, INITIAL_CLIENTS } from './constants';
 
-// Firebase Imports
-import { db, auth } from './firebase';
-import { signInAnonymously } from 'firebase/auth';
-import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc 
-} from 'firebase/firestore';
-
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'CLIENTS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
   
-  // State
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  // State Local (In-Memory for Preview)
+  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
+  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>(TransactionType.EXPENSE_SHOP);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDemoMode, setIsDemoMode] = useState(false);
-
-  // Load Data from Firebase with Fallback
-  useEffect(() => {
-    const initSystem = async () => {
-      try {
-        setIsLoading(true);
-        
-        // 1. Tentar Autenticação Anônima (Opcional)
-        // Se falhar (ex: auth/configuration-not-found), apenas logamos e continuamos,
-        // pois o banco pode estar público.
-        try {
-          await signInAnonymously(auth);
-        } catch (authError: any) {
-          console.warn("Aviso: Autenticação Anônima falhou ou não está configurada. Tentando acesso direto.", authError.code);
-        }
-
-        // 2. Fetch Employees
-        const empSnap = await getDocs(collection(db, 'employees'));
-        const empList = empSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
-        setEmployees(empList);
-
-        // 3. Fetch Transactions
-        const transSnap = await getDocs(collection(db, 'transactions'));
-        const transList = transSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
-        setTransactions(transList);
-
-        // 4. Fetch Clients
-        const clientSnap = await getDocs(collection(db, 'clients'));
-        const clientList = clientSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
-        setClients(clientList);
-
-        setIsDemoMode(false);
-
-      } catch (error: any) {
-        console.error("Erro crítico ao conectar Firebase (Banco de Dados):", error);
-        
-        // FALLBACK: Se der erro de permissão ou conexão NO BANCO, carrega dados locais
-        console.warn("Ativando Modo Demo (Dados Locais) devido ao erro de conexão com o Banco.");
-        setEmployees(INITIAL_EMPLOYEES);
-        setTransactions(INITIAL_TRANSACTIONS);
-        setClients(INITIAL_CLIENTS);
-        setIsDemoMode(true);
-        
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initSystem();
-  }, []);
-
-  // --- Handlers (Firebase Operations with Demo Check) ---
+  
+  // --- Local Handlers (No Database) ---
 
   // Transactions
-  const addTransaction = async (t: Omit<Transaction, 'id'>) => {
-    if (isDemoMode) {
-      const newT = { ...t, id: Math.random().toString() };
-      setTransactions(prev => [newT, ...prev]);
-      return;
-    }
-    try {
-      const docRef = await addDoc(collection(db, 'transactions'), t);
-      const newTransaction = { ...t, id: docRef.id };
-      setTransactions(prev => [newTransaction, ...prev]);
-    } catch (e) {
-      console.error("Erro ao adicionar transação: ", e);
-      alert("Erro ao salvar. Verifique permissões do banco.");
-    }
+  const addTransaction = (t: Omit<Transaction, 'id'>) => {
+    const newT = { ...t, id: Math.random().toString(36).substr(2, 9) };
+    setTransactions(prev => [newT, ...prev]);
   };
 
-  const updateTransaction = async (updatedT: Transaction) => {
-    if (isDemoMode) {
-      setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
-      return;
-    }
-    try {
-      const { id, ...data } = updatedT;
-      const tRef = doc(db, 'transactions', id);
-      await updateDoc(tRef, data);
-      setTransactions(prev => prev.map(t => t.id === id ? updatedT : t));
-    } catch (e) {
-      console.error("Erro ao atualizar transação: ", e);
-    }
+  const updateTransaction = (updatedT: Transaction) => {
+    setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
   };
 
-  const deleteTransaction = async (id: string) => {
+  const deleteTransaction = (id: string) => {
     if (confirm('Deseja realmente excluir este lançamento?')) {
-      if (isDemoMode) {
-        setTransactions(prev => prev.filter(t => t.id !== id));
-        return;
-      }
-      try {
-        await deleteDoc(doc(db, 'transactions', id));
-        setTransactions(prev => prev.filter(t => t.id !== id));
-      } catch (e) {
-        console.error("Erro ao excluir transação: ", e);
-      }
+      setTransactions(prev => prev.filter(t => t.id !== id));
     }
   };
 
   // Employees
-  const addEmployee = async (e: Omit<Employee, 'id'>) => {
-    if (isDemoMode) {
-      setEmployees(prev => [...prev, { ...e, id: Math.random().toString() }]);
-      return;
-    }
-    try {
-      const docRef = await addDoc(collection(db, 'employees'), e);
-      const newEmp = { ...e, id: docRef.id };
-      setEmployees(prev => [...prev, newEmp]);
-    } catch (err) {
-      console.error("Erro ao adicionar funcionário: ", err);
-    }
+  const addEmployee = (e: Omit<Employee, 'id'>) => {
+    const newEmp = { ...e, id: Math.random().toString(36).substr(2, 9) };
+    setEmployees(prev => [...prev, newEmp]);
   };
 
-  const updateEmployee = async (updatedE: Employee) => {
-    if (isDemoMode) {
-      setEmployees(prev => prev.map(e => e.id === updatedE.id ? updatedE : e));
-      return;
-    }
-    try {
-      const { id, ...data } = updatedE;
-      const eRef = doc(db, 'employees', id);
-      await updateDoc(eRef, data);
-      setEmployees(prev => prev.map(e => e.id === id ? updatedE : e));
-    } catch (err) {
-      console.error("Erro ao atualizar funcionário: ", err);
-    }
+  const updateEmployee = (updatedE: Employee) => {
+    setEmployees(prev => prev.map(e => e.id === updatedE.id ? updatedE : e));
   };
 
-  const deleteEmployee = async (id: string) => {
+  const deleteEmployee = (id: string) => {
     if(confirm('Tem certeza? Isso não apagará as despesas históricas deste funcionário.')) {
-      if (isDemoMode) {
-        setEmployees(prev => prev.filter(e => e.id !== id));
-        return;
-      }
-      try {
-        await deleteDoc(doc(db, 'employees', id));
-        setEmployees(prev => prev.filter(e => e.id !== id));
-      } catch (err) {
-        console.error("Erro ao excluir funcionário: ", err);
-      }
+      setEmployees(prev => prev.filter(e => e.id !== id));
     }
   };
 
   // Clients
-  const addClient = async (c: Omit<Client, 'id'>) => {
-    if (isDemoMode) {
-      setClients(prev => [{ ...c, id: Math.random().toString() }, ...prev]);
-      return;
-    }
-    try {
-      const docRef = await addDoc(collection(db, 'clients'), c);
-      const newClient = { ...c, id: docRef.id };
-      setClients(prev => [newClient, ...prev]);
-    } catch (err) {
-      console.error("Erro ao adicionar cliente: ", err);
-    }
+  const addClient = (c: Omit<Client, 'id'>) => {
+    const newClient = { ...c, id: Math.random().toString(36).substr(2, 9) };
+    setClients(prev => [newClient, ...prev]);
   };
 
-  const deleteClient = async (id: string) => {
+  const deleteClient = (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
-      if (isDemoMode) {
-        setClients(prev => prev.filter(c => c.id !== id));
-        return;
-      }
-      try {
-        await deleteDoc(doc(db, 'clients', id));
-        setClients(prev => prev.filter(c => c.id !== id));
-      } catch (err) {
-        console.error("Erro ao excluir cliente: ", err);
-      }
+      setClients(prev => prev.filter(c => c.id !== id));
     }
   };
 
@@ -248,15 +107,6 @@ const App: React.FC = () => {
       <span className="font-medium">{label}</span>
     </button>
   );
-
-  if (isLoading) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-[#111] flex-col gap-4">
-        <Loader2 className="w-12 h-12 text-moto-500 animate-spin" />
-        <p className="text-gray-400 font-medium">Carregando RODRIGO MOTOPEÇAS...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex h-screen bg-[#111] font-sans text-gray-100">
@@ -306,14 +156,6 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-[#121212]">
         
-        {/* Aviso de Modo Demo */}
-        {isDemoMode && (
-          <div className="bg-red-600 text-white px-4 py-3 text-sm font-bold text-center flex items-center justify-center gap-2 shadow-lg">
-            <AlertTriangle size={18} />
-            AVISO: Não foi possível conectar ao banco de dados. Usando modo offline (Demonstração).
-          </div>
-        )}
-
         {/* Mobile Header */}
         <header className="md:hidden bg-black text-white p-4 flex justify-between items-center sticky top-0 z-20 shadow-md border-b border-gray-800">
           <div className="flex items-center gap-3">
