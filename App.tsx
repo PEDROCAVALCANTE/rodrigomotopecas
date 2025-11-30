@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, WifiOff } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -7,65 +7,215 @@ import { Financials } from './views/Financials';
 import { EmployeeExpenses } from './views/EmployeeExpenses';
 import { ClientsView } from './views/Clients';
 import { TransactionModal } from './components/TransactionModal';
-import { INITIAL_EMPLOYEES, INITIAL_TRANSACTIONS, INITIAL_CLIENTS } from './constants';
+import { INITIAL_CLIENTS, INITIAL_EMPLOYEES, INITIAL_TRANSACTIONS } from './constants';
+
+// Firebase Imports
+import { db, auth } from './firebase';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  onSnapshot, 
+  enableIndexedDbPersistence
+} from 'firebase/firestore';
+import { signInAnonymously } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'CLIENTS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
   
-  // State Local (In-Memory for Preview)
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [clients, setClients] = useState<Client[]>(INITIAL_CLIENTS);
-  const [transactions, setTransactions] = useState<Transaction[]>(INITIAL_TRANSACTIONS);
+  // Data State
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDemoMode, setIsDemoMode] = useState(false); // New state to track connection status
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>(TransactionType.EXPENSE_SHOP);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // --- Firebase Connection & Listeners ---
+  useEffect(() => {
+    let unsubscribeEmployees: () => void;
+    let unsubscribeClients: () => void;
+    let unsubscribeTransactions: () => void;
+
+    const startDemoMode = () => {
+      console.warn("Using Local Data (Demo Mode) due to connection error.");
+      setEmployees(INITIAL_EMPLOYEES);
+      setClients(INITIAL_CLIENTS);
+      setTransactions(INITIAL_TRANSACTIONS);
+      setIsDemoMode(true);
+      setIsLoading(false);
+    };
+
+    const connectToFirebase = async () => {
+      try {
+        // Tenta autenticação anônima
+        await signInAnonymously(auth);
+        
+        // 1. Listen to Employees
+        unsubscribeEmployees = onSnapshot(collection(db, 'employees'), 
+          (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
+            setEmployees(data);
+          },
+          (error) => {
+            console.error("Firebase Employee Error:", error);
+            startDemoMode();
+          }
+        );
+
+        // 2. Listen to Clients
+        unsubscribeClients = onSnapshot(collection(db, 'clients'), 
+          (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
+            setClients(data);
+          },
+          (error) => {
+            console.error("Firebase Client Error:", error);
+            // Don't call startDemoMode here if already called by others to avoid double set
+          }
+        );
+
+        // 3. Listen to Transactions
+        unsubscribeTransactions = onSnapshot(collection(db, 'transactions'), 
+          (snapshot) => {
+            const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
+            data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setTransactions(data);
+            setIsLoading(false);
+          },
+          (error) => {
+            console.error("Firebase Transaction Error:", error);
+            startDemoMode();
+          }
+        );
+
+      } catch (error) {
+        console.warn("Global Connection Error:", error);
+        startDemoMode();
+      }
+    };
+
+    connectToFirebase();
+
+    return () => {
+      if (unsubscribeEmployees) unsubscribeEmployees();
+      if (unsubscribeClients) unsubscribeClients();
+      if (unsubscribeTransactions) unsubscribeTransactions();
+    };
+  }, []);
   
-  // --- Local Handlers (No Database) ---
+  // --- Handlers (Firestore Operations with Fallback) ---
 
-  // Transactions
-  const addTransaction = (t: Omit<Transaction, 'id'>) => {
-    const newT = { ...t, id: Math.random().toString(36).substr(2, 9) };
-    setTransactions(prev => [newT, ...prev]);
+  const addTransaction = async (t: Omit<Transaction, 'id'>) => {
+    if (isDemoMode) {
+      const newT = { ...t, id: Math.random().toString() } as Transaction;
+      setTransactions(prev => [newT, ...prev]);
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'transactions'), t);
+    } catch (error) {
+      console.error("Error adding transaction: ", error);
+      alert("Erro ao salvar no banco. Verifique as permissões.");
+    }
   };
 
-  const updateTransaction = (updatedT: Transaction) => {
-    setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
+  const updateTransaction = async (updatedT: Transaction) => {
+    if (isDemoMode) {
+      setTransactions(prev => prev.map(t => t.id === updatedT.id ? updatedT : t));
+      return;
+    }
+    try {
+      const { id, ...data } = updatedT;
+      await updateDoc(doc(db, 'transactions', id), data);
+    } catch (error) {
+      console.error("Error updating transaction: ", error);
+    }
   };
 
-  const deleteTransaction = (id: string) => {
+  const deleteTransaction = async (id: string) => {
     if (confirm('Deseja realmente excluir este lançamento?')) {
-      setTransactions(prev => prev.filter(t => t.id !== id));
+      if (isDemoMode) {
+        setTransactions(prev => prev.filter(t => t.id !== id));
+        return;
+      }
+      try {
+        await deleteDoc(doc(db, 'transactions', id));
+      } catch (error) {
+        console.error("Error deleting transaction: ", error);
+      }
     }
   };
 
-  // Employees
-  const addEmployee = (e: Omit<Employee, 'id'>) => {
-    const newEmp = { ...e, id: Math.random().toString(36).substr(2, 9) };
-    setEmployees(prev => [...prev, newEmp]);
+  const addEmployee = async (e: Omit<Employee, 'id'>) => {
+    if (isDemoMode) {
+      setEmployees(prev => [...prev, { ...e, id: Math.random().toString() }]);
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'employees'), e);
+    } catch (error) {
+      console.error("Error adding employee: ", error);
+    }
   };
 
-  const updateEmployee = (updatedE: Employee) => {
-    setEmployees(prev => prev.map(e => e.id === updatedE.id ? updatedE : e));
+  const updateEmployee = async (updatedE: Employee) => {
+    if (isDemoMode) {
+      setEmployees(prev => prev.map(e => e.id === updatedE.id ? updatedE : e));
+      return;
+    }
+    try {
+      const { id, ...data } = updatedE;
+      await updateDoc(doc(db, 'employees', id), data);
+    } catch (error) {
+      console.error("Error updating employee: ", error);
+    }
   };
 
-  const deleteEmployee = (id: string) => {
+  const deleteEmployee = async (id: string) => {
     if(confirm('Tem certeza? Isso não apagará as despesas históricas deste funcionário.')) {
-      setEmployees(prev => prev.filter(e => e.id !== id));
+      if (isDemoMode) {
+        setEmployees(prev => prev.filter(e => e.id !== id));
+        return;
+      }
+      try {
+        await deleteDoc(doc(db, 'employees', id));
+      } catch (error) {
+        console.error("Error deleting employee: ", error);
+      }
     }
   };
 
-  // Clients
-  const addClient = (c: Omit<Client, 'id'>) => {
-    const newClient = { ...c, id: Math.random().toString(36).substr(2, 9) };
-    setClients(prev => [newClient, ...prev]);
+  const addClient = async (c: Omit<Client, 'id'>) => {
+    if (isDemoMode) {
+      setClients(prev => [...prev, { ...c, id: Math.random().toString() }]);
+      return;
+    }
+    try {
+      await addDoc(collection(db, 'clients'), c);
+    } catch (error) {
+      console.error("Error adding client: ", error);
+    }
   };
 
-  const deleteClient = (id: string) => {
+  const deleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
-      setClients(prev => prev.filter(c => c.id !== id));
+      if (isDemoMode) {
+        setClients(prev => prev.filter(c => c.id !== id));
+        return;
+      }
+      try {
+        await deleteDoc(doc(db, 'clients', id));
+      } catch (error) {
+        console.error("Error deleting client: ", error);
+      }
     }
   };
 
@@ -113,11 +263,9 @@ const App: React.FC = () => {
       
       {/* Sidebar (Desktop) */}
       <aside className="w-64 bg-black border-r border-gray-800 flex-shrink-0 hidden md:flex flex-col relative overflow-hidden">
-        {/* Decorative Background Elements matching the logo style */}
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600"></div>
         
         <div className="p-6 flex flex-col items-center gap-3 border-b border-gray-800 bg-black">
-           {/* Logo Placeholder / Styled Text */}
            <div className="w-full text-center">
              <div className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-lg mb-3 transform rotate-3">
                 <Wrench className="text-white w-8 h-8" />
@@ -154,8 +302,16 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[#121212]">
+      <main className="flex-1 overflow-y-auto bg-[#121212] relative">
         
+        {/* Connection Warning Banner */}
+        {isDemoMode && (
+          <div className="bg-orange-600 text-white text-xs font-bold py-1 px-4 text-center flex items-center justify-center gap-2">
+            <WifiOff size={14} />
+            AVISO: Modo Demonstração (Sem conexão com Banco de Dados). As alterações não serão salvas permanentemente.
+          </div>
+        )}
+
         {/* Mobile Header */}
         <header className="md:hidden bg-black text-white p-4 flex justify-between items-center sticky top-0 z-20 shadow-md border-b border-gray-800">
           <div className="flex items-center gap-3">
@@ -173,42 +329,53 @@ const App: React.FC = () => {
         </header>
 
         <div className="p-4 md:p-8 max-w-7xl mx-auto pb-24">
-          {currentView === 'DASHBOARD' && (
-            <Dashboard transactions={transactions} employees={employees} />
+          
+          {isLoading ? (
+             <div className="flex flex-col items-center justify-center h-[50vh] text-gray-500 gap-4">
+                <Loader2 size={48} className="animate-spin text-moto-600" />
+                <p>Conectando ao banco de dados...</p>
+             </div>
+          ) : (
+            <>
+              {currentView === 'DASHBOARD' && (
+                <Dashboard transactions={transactions} employees={employees} />
+              )}
+              {currentView === 'EMPLOYEES' && (
+                <EmployeesView 
+                  employees={employees} 
+                  onAddEmployee={addEmployee} 
+                  onDeleteEmployee={deleteEmployee}
+                />
+              )}
+              {currentView === 'CLIENTS' && (
+                <ClientsView 
+                  clients={clients} 
+                  onAddClient={addClient} 
+                  onDeleteClient={deleteClient}
+                />
+              )}
+              {currentView === 'EXPENSES_SHOP' && (
+                <Financials 
+                  transactions={transactions} 
+                  employees={employees} 
+                  activeTab="SHOP"
+                  onEditTransaction={openEditTransaction}
+                  onDeleteTransaction={deleteTransaction}
+                />
+              )}
+              {currentView === 'EXPENSES_EMP' && (
+                <EmployeeExpenses
+                  employees={employees}
+                  transactions={transactions}
+                  onUpdateEmployee={updateEmployee}
+                  onAddTransaction={addTransaction}
+                  onUpdateTransaction={updateTransaction}
+                  onDeleteTransaction={deleteTransaction}
+                />
+              )}
+            </>
           )}
-          {currentView === 'EMPLOYEES' && (
-            <EmployeesView 
-              employees={employees} 
-              onAddEmployee={addEmployee} 
-              onDeleteEmployee={deleteEmployee}
-            />
-          )}
-          {currentView === 'CLIENTS' && (
-            <ClientsView 
-              clients={clients} 
-              onAddClient={addClient} 
-              onDeleteClient={deleteClient}
-            />
-          )}
-          {currentView === 'EXPENSES_SHOP' && (
-            <Financials 
-              transactions={transactions} 
-              employees={employees} 
-              activeTab="SHOP"
-              onEditTransaction={openEditTransaction}
-              onDeleteTransaction={deleteTransaction}
-            />
-          )}
-          {currentView === 'EXPENSES_EMP' && (
-            <EmployeeExpenses
-              employees={employees}
-              transactions={transactions}
-              onUpdateEmployee={updateEmployee}
-              onAddTransaction={addTransaction}
-              onUpdateTransaction={updateTransaction}
-              onDeleteTransaction={deleteTransaction}
-            />
-          )}
+
         </div>
       </main>
 
