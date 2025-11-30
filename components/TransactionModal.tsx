@@ -58,14 +58,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const transactionData = {
+    
+    // Construct the object without undefined values
+    const transactionData: any = {
       date,
       description,
       amount: parseFloat(amount),
       type,
       category,
-      employeeId: type === TransactionType.EXPENSE_EMPLOYEE ? employeeId : undefined,
     };
+
+    // Only include employeeId if it is relevant
+    if (type === TransactionType.EXPENSE_EMPLOYEE) {
+      transactionData.employeeId = employeeId;
+    }
 
     if (initialData) {
       onSave({ ...transactionData, id: initialData.id });
