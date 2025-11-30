@@ -1,14 +1,22 @@
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, Employee } from '../types';
-import { Filter, Calendar, Search } from 'lucide-react';
+import { Filter, Calendar, Search, Edit2, Trash2 } from 'lucide-react';
 
 interface FinancialsProps {
   transactions: Transaction[];
   employees: Employee[];
   activeTab?: 'ALL' | 'SHOP' | 'EMPLOYEE';
+  onEditTransaction: (t: Transaction) => void;
+  onDeleteTransaction: (id: string) => void;
 }
 
-export const Financials: React.FC<FinancialsProps> = ({ transactions, employees, activeTab = 'ALL' }) => {
+export const Financials: React.FC<FinancialsProps> = ({ 
+  transactions, 
+  employees, 
+  activeTab = 'ALL',
+  onEditTransaction,
+  onDeleteTransaction
+}) => {
   const [filterType, setFilterType] = useState<'ALL' | 'SHOP' | 'EMPLOYEE'>(activeTab);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -83,12 +91,13 @@ export const Financials: React.FC<FinancialsProps> = ({ transactions, employees,
                 <th className="px-6 py-4 font-medium">Categoria</th>
                 {filterType !== 'SHOP' && <th className="px-6 py-4 font-medium">Funcionário</th>}
                 <th className="px-6 py-4 font-medium text-right">Valor</th>
+                <th className="px-6 py-4 font-medium text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-gray-400">
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-400">
                     Nenhum lançamento encontrado.
                   </td>
                 </tr>
@@ -123,6 +132,24 @@ export const Financials: React.FC<FinancialsProps> = ({ transactions, employees,
                       ${t.type === TransactionType.INCOME ? 'text-green-600' : 'text-red-600'}
                     `}>
                       {t.type === TransactionType.INCOME ? '+' : '-'} {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                       <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button 
+                            onClick={() => onEditTransaction(t)}
+                            className="p-1.5 hover:bg-blue-100 text-blue-600 rounded transition-colors" 
+                            title="Editar"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button 
+                            onClick={() => onDeleteTransaction(t.id)}
+                            className="p-1.5 hover:bg-red-100 text-red-600 rounded transition-colors" 
+                            title="Excluir"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
                     </td>
                   </tr>
                 ))
