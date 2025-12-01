@@ -36,6 +36,23 @@ export interface Transaction {
   category?: string; // e.g., 'Parts', 'Rent', 'Advance', 'Salary'
 }
 
+// Novos Tipos para Estoque e Serviços
+export interface Product {
+  id: string;
+  name: string;
+  quantity: number; // Estoque atual
+  minStock: number; // Estoque mínimo para alerta
+  costPrice: number; // Preço de Custo
+  sellPrice: number; // Preço de Venda
+}
+
+export interface Service {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+}
+
 export interface DashboardStats {
   totalIncome: number;
   totalExpenseShop: number;

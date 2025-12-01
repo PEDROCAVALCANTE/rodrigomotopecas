@@ -1,4 +1,4 @@
-import { Employee, Transaction, TransactionType, Client } from './types';
+import { Employee, Transaction, TransactionType, Client, Product, Service } from './types';
 
 export const CATEGORIES = [
   'Peças',
@@ -67,4 +67,17 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: '2', date: '2023-10-02', description: 'Aluguel Oficina', amount: 1200, type: TransactionType.EXPENSE_SHOP, category: 'Aluguel' },
   { id: '3', date: '2023-10-05', description: 'Compra de Óleo', amount: 300, type: TransactionType.EXPENSE_SHOP, category: 'Peças' },
   { id: '5', date: '2023-10-12', description: 'Comissão Mão de Obra', amount: 150, type: TransactionType.EXPENSE_EMPLOYEE, employeeId: '3', category: 'Comissão' },
+];
+
+export const INITIAL_PRODUCTS: Product[] = [
+  { id: '1', name: 'Óleo Mobil 10w30', quantity: 24, minStock: 5, costPrice: 18.50, sellPrice: 35.00 },
+  { id: '2', name: 'Kit Relação Titan 160', quantity: 4, minStock: 3, costPrice: 85.00, sellPrice: 150.00 },
+  { id: '3', name: 'Câmara de Ar Aro 18', quantity: 10, minStock: 5, costPrice: 12.00, sellPrice: 25.00 },
+];
+
+export const INITIAL_SERVICES: Service[] = [
+  { id: '1', name: 'Troca de Óleo', price: 10.00 },
+  { id: '2', name: 'Lavagem Completa', price: 35.00 },
+  { id: '3', name: 'Revisão Geral (Baixa CC)', price: 150.00 },
+  { id: '4', name: 'Troca de Pneu', price: 15.00 },
 ];
