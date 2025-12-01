@@ -43,6 +43,7 @@ export const INITIAL_CLIENTS: Client[] = [
   { 
     id: '1', 
     name: 'Marcos Silva', 
+    type: 'INDIVIDUAL',
     phone: '(11) 99876-5432',
     motorcycle: 'Honda Titan 160', 
     value: 450.00, 
@@ -51,9 +52,10 @@ export const INITIAL_CLIENTS: Client[] = [
   },
   { 
     id: '2', 
-    name: 'Ana Oliveira', 
+    name: 'Logística Express', 
+    type: 'COMPANY',
     phone: '(11) 98888-7777',
-    motorcycle: 'Yamaha Fazer 250', 
+    motorcycle: 'Frota Yamaha Fazer', 
     value: 1200.00, 
     dueDate: '2023-11-20', 
     installments: 4 

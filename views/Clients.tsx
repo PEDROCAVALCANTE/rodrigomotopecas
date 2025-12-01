@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, Briefcase } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -14,8 +14,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
   const [searchTerm, setSearchTerm] = useState('');
   
   // Form State
-  const [newClient, setNewClient] = useState({
+  const [newClient, setNewClient] = useState<{
+    name: string;
+    type: 'INDIVIDUAL' | 'COMPANY';
+    phone: string;
+    motorcycle: string;
+    value: string;
+    dueDate: string;
+    installments: string;
+  }>({
     name: '',
+    type: 'INDIVIDUAL',
     phone: '',
     motorcycle: '',
     value: '',
@@ -42,6 +51,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     e.preventDefault();
     onAddClient({
       name: newClient.name,
+      type: newClient.type,
       phone: newClient.phone,
       motorcycle: newClient.motorcycle,
       value: parseFloat(newClient.value) || 0,
@@ -52,6 +62,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     // Reset form
     setNewClient({
       name: '',
+      type: 'INDIVIDUAL',
       phone: '',
       motorcycle: '',
       value: '',
@@ -97,86 +108,112 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
             Cadastrar Cliente
           </h2>
           
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
             
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Nome do Cliente</label>
-              <input 
-                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
-                placeholder="Ex: João da Silva" 
-                value={newClient.name}
-                onChange={e => setNewClient({...newClient, name: e.target.value})}
-                required
-              />
+            {/* Seletor Tipo de Cliente */}
+            <div className="flex gap-4 p-1 bg-gray-100 rounded-lg w-fit">
+              <button
+                type="button"
+                onClick={() => setNewClient({...newClient, type: 'INDIVIDUAL'})}
+                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${newClient.type === 'INDIVIDUAL' ? 'bg-white text-moto-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <User size={16} />
+                Particular
+              </button>
+              <button
+                type="button"
+                onClick={() => setNewClient({...newClient, type: 'COMPANY'})}
+                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${newClient.type === 'COMPANY' ? 'bg-white text-moto-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              >
+                <Building2 size={16} />
+                Empresa
+              </button>
             </div>
 
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-gray-600 mb-1">Telefone / WhatsApp</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-2.5 text-gray-400" size={18} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="md:col-span-1">
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  {newClient.type === 'INDIVIDUAL' ? 'Nome Completo' : 'Nome da Empresa / Razão Social'}
+                </label>
                 <input 
-                  type="tel"
-                  className="w-full border border-gray-300 p-2.5 pl-10 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
-                  placeholder="(00) 00000-0000" 
-                  value={newClient.phone}
-                  onChange={handlePhoneChange}
+                  className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                  placeholder={newClient.type === 'INDIVIDUAL' ? "Ex: João da Silva" : "Ex: Transportadora Express Ltda"} 
+                  value={newClient.name}
+                  onChange={e => setNewClient({...newClient, name: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div className="md:col-span-1">
+                <label className="block text-sm font-medium text-gray-600 mb-1">Telefone / WhatsApp</label>
+                <div className="relative">
+                  <Phone className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                  <input 
+                    type="tel"
+                    className="w-full border border-gray-300 p-2.5 pl-10 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                    placeholder="(00) 00000-0000" 
+                    value={newClient.phone}
+                    onChange={handlePhoneChange}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">
+                  {newClient.type === 'INDIVIDUAL' ? 'Moto / Veículo' : 'Veículos / Frota'}
+                </label>
+                <div className="relative">
+                  <Bike className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                  <input 
+                    className="w-full border border-gray-300 p-2.5 pl-10 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                    placeholder="Ex: Honda Titan 160" 
+                    value={newClient.motorcycle}
+                    onChange={e => setNewClient({...newClient, motorcycle: e.target.value})}
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Valor Total (R$)</label>
+                <input 
+                  type="number"
+                  step="0.01"
+                  className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                  placeholder="0.00" 
+                  value={newClient.value}
+                  onChange={e => setNewClient({...newClient, value: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Data de Vencimento</label>
+                <input 
+                  type="date"
+                  className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                  value={newClient.dueDate}
+                  onChange={e => setNewClient({...newClient, dueDate: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-1">Qtd. Parcelas</label>
+                <input 
+                  type="number"
+                  min="1"
+                  className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
+                  placeholder="1" 
+                  value={newClient.installments}
+                  onChange={e => setNewClient({...newClient, installments: e.target.value})}
                   required
                 />
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Moto / Veículo</label>
-              <div className="relative">
-                <Bike className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                <input 
-                  className="w-full border border-gray-300 p-2.5 pl-10 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
-                  placeholder="Ex: Honda Titan 160" 
-                  value={newClient.motorcycle}
-                  onChange={e => setNewClient({...newClient, motorcycle: e.target.value})}
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Valor Total (R$)</label>
-              <input 
-                type="number"
-                step="0.01"
-                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
-                placeholder="0.00" 
-                value={newClient.value}
-                onChange={e => setNewClient({...newClient, value: e.target.value})}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Data de Vencimento</label>
-              <input 
-                type="date"
-                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
-                value={newClient.dueDate}
-                onChange={e => setNewClient({...newClient, dueDate: e.target.value})}
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">Qtd. Parcelas</label>
-              <input 
-                type="number"
-                min="1"
-                className="w-full border border-gray-300 p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
-                placeholder="1" 
-                value={newClient.installments}
-                onChange={e => setNewClient({...newClient, installments: e.target.value})}
-                required
-              />
-            </div>
-
-            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+            <div className="flex justify-end gap-3 pt-2">
               <button 
                 type="button" 
                 onClick={() => setShowForm(false)} 
@@ -211,6 +248,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredClients.map(client => {
           const isPaid = client.status === 'PAID';
+          const isCompany = client.type === 'COMPANY';
           
           return (
             <div 
@@ -220,19 +258,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
             >
               <div>
                 <div className={`p-5 border-b flex justify-between items-start ${isPaid ? 'bg-green-50 border-green-100' : 'bg-gray-50/50 border-gray-50'}`}>
-                  <div>
-                    <h3 className={`font-bold text-lg ${isPaid ? 'text-green-800' : 'text-gray-800'}`}>
-                      {client.name}
-                    </h3>
-                    
-                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
-                      <Phone size={14} className={isPaid ? 'text-green-600' : 'text-moto-500'} />
-                      <span>{client.phone || 'Sem telefone'}</span>
+                  <div className="flex gap-3">
+                    <div className={`p-2 rounded-full h-fit ${isCompany ? 'bg-blue-100 text-blue-600' : 'bg-orange-100 text-orange-600'}`}>
+                       {isCompany ? <Building2 size={20} /> : <User size={20} />}
                     </div>
+                    <div>
+                      <h3 className={`font-bold text-lg leading-tight ${isPaid ? 'text-green-800' : 'text-gray-800'}`}>
+                        {client.name}
+                      </h3>
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">
+                        {isCompany ? 'Empresa' : 'Particular'}
+                      </span>
+                      
+                      <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-2">
+                        <Phone size={14} className={isPaid ? 'text-green-600' : 'text-moto-500'} />
+                        <span>{client.phone || 'Sem telefone'}</span>
+                      </div>
 
-                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
-                      <Bike size={14} />
-                      <span>{client.motorcycle}</span>
+                      <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
+                        <Bike size={14} />
+                        <span>{client.motorcycle}</span>
+                      </div>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2 items-end">

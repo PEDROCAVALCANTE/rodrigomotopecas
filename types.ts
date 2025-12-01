@@ -17,6 +17,7 @@ export interface Employee {
 export interface Client {
   id: string;
   name: string;
+  type: 'INDIVIDUAL' | 'COMPANY'; // Novo campo
   phone: string; // New field
   motorcycle: string;
   value: number; // Total value of service/debt

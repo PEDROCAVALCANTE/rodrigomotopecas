@@ -85,8 +85,9 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     };
 
     if (type === TransactionType.EXPENSE_EMPLOYEE) {
-      if (!employeeId) return; // Basic validation
-      transactionData.employeeId = employeeId;
+      if (employeeId) {
+         transactionData.employeeId = employeeId;
+      }
     }
 
     if (initialData) {
@@ -213,11 +214,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   }}
                   required
                   placeholder="0.00"
-                  className={`${baseInputClass} ${amountError ? 'border-2 border-red-500 focus:ring-red-500' : ''}`}
+                  className={`${baseInputClass} text-xl font-bold placeholder-gray-600 ${amountError ? '!border-2 !border-red-500 focus:!ring-red-500 !bg-red-900/10' : ''}`}
                 />
                 {amountError && (
                   <div className="absolute right-3 top-3 text-red-500 animate-pulse">
-                    <AlertCircle size={20} />
+                    <AlertCircle size={24} />
                   </div>
                 )}
               </div>
