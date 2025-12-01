@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, WifiOff, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, WifiOff, AlertTriangle, Menu, X } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -142,9 +142,9 @@ const App: React.FC = () => {
     }
     try {
       await addDoc(collection(db, 'transactions'), t);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding transaction: ", error);
-      alert("Erro ao salvar. Verifique sua conexão ou regras do banco.");
+      alert(`Erro ao salvar: ${error.code || error.message}. Verifique o painel do Firebase.`);
     }
   };
 
@@ -226,6 +226,19 @@ const App: React.FC = () => {
     }
   };
 
+  const updateClient = async (updatedC: Client) => {
+    if (isDemoMode) {
+      setClients(prev => prev.map(c => c.id === updatedC.id ? updatedC : c));
+      return;
+    }
+    try {
+      const { id, ...data } = updatedC;
+      await updateDoc(doc(db, 'clients', id), data);
+    } catch (error) {
+      console.error("Error updating client: ", error);
+    }
+  };
+
   const deleteClient = async (id: string) => {
     if(confirm('Tem certeza que deseja remover este cliente?')) {
       if (isDemoMode) {
@@ -300,12 +313,28 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen bg-[#111] font-sans text-gray-100">
       
-      {/* Sidebar (Desktop) */}
-      <aside className="w-64 bg-black border-r border-gray-800 flex-shrink-0 hidden md:flex flex-col relative overflow-hidden">
+      {/* Mobile Overlay */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/80 z-30 md:hidden animate-fade-in"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar (Desktop & Mobile Drawer) */}
+      <aside className={`fixed inset-y-0 left-0 z-40 w-64 bg-black border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600"></div>
         
-        <div className="p-6 flex flex-col items-center gap-3 border-b border-gray-800 bg-black">
-           <div className="w-full text-center">
+        <div className="p-6 flex flex-col items-center gap-3 border-b border-gray-800 bg-black relative">
+           {/* Close Button Mobile */}
+           <button 
+             onClick={() => setIsMobileMenuOpen(false)}
+             className="absolute top-4 right-4 text-gray-500 hover:text-white md:hidden"
+           >
+             <X size={24} />
+           </button>
+
+           <div className="w-full text-center mt-2 md:mt-0">
              <div className="inline-flex items-center justify-center p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl shadow-lg mb-3 transform rotate-3">
                 <Wrench className="text-white w-8 h-8" />
              </div>
@@ -318,7 +347,7 @@ const App: React.FC = () => {
            </div>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2 mt-2">
+        <nav className="flex-1 p-4 space-y-2 mt-2 overflow-y-auto">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
           <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" />
           <NavItem view="CLIENTS" icon={BookUser} label="Clientes" />
@@ -331,7 +360,10 @@ const App: React.FC = () => {
 
         <div className="p-4 border-t border-gray-800 bg-black">
           <button 
-            onClick={() => openNewTransaction()}
+            onClick={() => {
+              openNewTransaction();
+              setIsMobileMenuOpen(false);
+            }}
             className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-orange-900/20 transform hover:-translate-y-0.5"
           >
             <PlusCircle size={20} />
@@ -341,7 +373,7 @@ const App: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto bg-[#121212] relative">
+      <main className="flex-1 overflow-y-auto bg-[#121212] relative w-full">
         
         {/* Permission Error Banner */}
         {permissionError && (
@@ -355,7 +387,7 @@ const App: React.FC = () => {
           </div>
         )}
 
-        {/* Demo Mode Banner (only if permission error is NOT showing, to avoid clutter) */}
+        {/* Demo Mode Banner */}
         {isDemoMode && !permissionError && (
           <div className="bg-orange-600 text-white text-xs font-bold py-1 px-4 text-center flex items-center justify-center gap-2">
             <WifiOff size={14} />
@@ -366,12 +398,20 @@ const App: React.FC = () => {
         {/* Mobile Header */}
         <header className="md:hidden bg-black text-white p-4 flex justify-between items-center sticky top-0 z-20 shadow-md border-b border-gray-800">
           <div className="flex items-center gap-3">
-             <div className="bg-orange-500 p-1.5 rounded-lg">
-                <Wrench size={18} className="text-white" />
-             </div>
-             <div>
-                <h1 className="font-black italic uppercase leading-none" style={{ fontFamily: 'Impact, sans-serif' }}>RODRIGO</h1>
-                <p className="text-[10px] text-orange-400 font-bold tracking-wider leading-none">MOTOPEÇAS</p>
+             <button 
+               onClick={() => setIsMobileMenuOpen(true)}
+               className="p-1 -ml-1 text-gray-300 hover:text-white"
+             >
+               <Menu size={28} />
+             </button>
+             
+             <div className="flex items-center gap-2">
+                <div className="bg-orange-500 p-1 rounded-md">
+                    <Wrench size={16} className="text-white" />
+                </div>
+                <div>
+                    <h1 className="font-black italic uppercase leading-none text-lg" style={{ fontFamily: 'Impact, sans-serif' }}>RODRIGO</h1>
+                </div>
              </div>
           </div>
           <button onClick={() => openNewTransaction()} className="bg-orange-600 p-2 rounded-full shadow-lg text-white">
@@ -404,6 +444,7 @@ const App: React.FC = () => {
                   clients={clients} 
                   onAddClient={addClient} 
                   onDeleteClient={deleteClient}
+                  onUpdateClient={updateClient}
                 />
               )}
               {currentView === 'EXPENSES_SHOP' && (
@@ -431,7 +472,7 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {/* Mobile Bottom Nav */}
+      {/* Mobile Bottom Nav (Backup/Quick Actions) - Pode ser mantido ou removido se quiser só a sidebar */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[#0a0a0a] border-t border-gray-800 flex justify-around p-3 z-30 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.5)] pb-safe">
         <button onClick={() => setCurrentView('DASHBOARD')} className={`p-2 rounded-lg flex flex-col items-center gap-1 transition-colors ${currentView === 'DASHBOARD' ? 'text-orange-500' : 'text-gray-500'}`}>
           <LayoutDashboard size={20} />

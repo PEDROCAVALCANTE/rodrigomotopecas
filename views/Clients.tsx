@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2, Phone } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
   onAddClient: (client: Omit<Client, 'id'>) => void;
   onDeleteClient: (id: string) => void;
+  onUpdateClient: (client: Client) => void;
 }
 
-export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, onDeleteClient }) => {
+export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, onDeleteClient, onUpdateClient }) => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -22,6 +23,21 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     installments: '1'
   });
 
+  // Função para formatar telefone (Máscara)
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 11) value = value.slice(0, 11);
+    
+    if (value.length > 2) {
+      value = `(${value.slice(0, 2)}) ${value.slice(2)}`;
+    }
+    if (value.length > 9) {
+      value = `${value.slice(0, 9)}-${value.slice(9)}`;
+    }
+    
+    setNewClient({...newClient, phone: value});
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onAddClient({
@@ -31,6 +47,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       value: parseFloat(newClient.value) || 0,
       dueDate: newClient.dueDate,
       installments: parseInt(newClient.installments) || 1,
+      status: 'PENDING'
     });
     // Reset form
     setNewClient({
@@ -42,6 +59,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       installments: '1'
     });
     setShowForm(false);
+  };
+
+  const handleMarkAsPaid = (client: Client) => {
+    if(confirm(`Confirmar pagamento de ${client.name}?`)) {
+      onUpdateClient({
+        ...client,
+        status: 'PAID'
+      });
+    }
   };
 
   const filteredClients = clients.filter(c => 
@@ -93,7 +119,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                   className="w-full border border-gray-300 p-2.5 pl-10 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none" 
                   placeholder="(00) 00000-0000" 
                   value={newClient.phone}
-                  onChange={e => setNewClient({...newClient, phone: e.target.value})}
+                  onChange={handlePhoneChange}
                   required
                 />
               </div>
@@ -183,56 +209,90 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
 
       {/* List */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredClients.map(client => (
-          <div key={client.id} className="bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow overflow-hidden group">
-            <div className="p-5 border-b border-gray-50 bg-gray-50/50 flex justify-between items-start">
+        {filteredClients.map(client => {
+          const isPaid = client.status === 'PAID';
+          
+          return (
+            <div 
+              key={client.id} 
+              className={`bg-white rounded-xl shadow-sm border transition-shadow overflow-hidden group flex flex-col justify-between
+                ${isPaid ? 'border-green-200 shadow-green-100' : 'border-gray-100 hover:shadow-md'}`}
+            >
               <div>
-                <h3 className="font-bold text-gray-800 text-lg">{client.name}</h3>
+                <div className={`p-5 border-b flex justify-between items-start ${isPaid ? 'bg-green-50 border-green-100' : 'bg-gray-50/50 border-gray-50'}`}>
+                  <div>
+                    <h3 className={`font-bold text-lg ${isPaid ? 'text-green-800' : 'text-gray-800'}`}>
+                      {client.name}
+                    </h3>
+                    
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
+                      <Phone size={14} className={isPaid ? 'text-green-600' : 'text-moto-500'} />
+                      <span>{client.phone || 'Sem telefone'}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
+                      <Bike size={14} />
+                      <span>{client.motorcycle}</span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2 items-end">
+                    <button 
+                      onClick={() => onDeleteClient(client.id)}
+                      className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                      title="Excluir Cliente"
+                    >
+                      <Trash2 size={18} />
+                    </button>
+                    {isPaid && (
+                       <div className="bg-green-200 text-green-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1">
+                         <CheckCircle size={10} />
+                         PAGO
+                       </div>
+                    )}
+                  </div>
+                </div>
                 
-                <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
-                  <Phone size={14} className="text-moto-500" />
-                  <span>{client.phone || 'Sem telefone'}</span>
-                </div>
+                <div className="p-5 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Valor Total</span>
+                    <span className={`text-lg font-bold ${isPaid ? 'text-green-700' : 'text-gray-800'}`}>
+                      {client.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
 
-                <div className="flex items-center gap-1.5 text-gray-500 text-sm mt-1">
-                  <Bike size={14} />
-                  <span>{client.motorcycle}</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Vencimento</span>
+                    <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-sm font-medium
+                      ${isPaid ? 'bg-green-100 text-green-700' : 'bg-moto-50 text-moto-700'}`}>
+                      <Calendar size={14} />
+                      {new Date(client.dueDate).toLocaleDateString('pt-BR')}
+                    </div>
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
+                    <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Parcelamento</span>
+                    <span className="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                      {client.installments}x de {(client.value / client.installments).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <button 
-                onClick={() => onDeleteClient(client.id)}
-                className="text-gray-300 hover:text-red-500 transition-colors p-1"
-                title="Excluir Cliente"
-              >
-                <Trash2 size={18} />
-              </button>
+
+              {/* Footer Button Area */}
+              {!isPaid && (
+                <div className="p-4 bg-gray-50 border-t border-gray-100">
+                  <button 
+                    onClick={() => handleMarkAsPaid(client)}
+                    className="w-full flex items-center justify-center gap-2 bg-white border border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 py-2.5 rounded-lg font-semibold transition-all text-sm shadow-sm"
+                  >
+                    <CircleDollarSign size={18} />
+                    Marcar como Pago
+                  </button>
+                </div>
+              )}
             </div>
-            
-            <div className="p-5 space-y-4">
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">Valor Total</span>
-                <span className="text-lg font-bold text-gray-800">
-                  {client.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">Vencimento</span>
-                <div className="flex items-center gap-1.5 text-moto-700 bg-moto-50 px-2 py-1 rounded text-sm font-medium">
-                  <Calendar size={14} />
-                  {new Date(client.dueDate).toLocaleDateString('pt-BR')}
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-gray-100 flex justify-between items-center">
-                <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Parcelamento</span>
-                <span className="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
-                  {client.installments}x de {(client.value / client.installments).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </span>
-              </div>
-            </div>
-          </div>
-        ))}
+          );
+        })}
         
         {filteredClients.length === 0 && (
           <div className="col-span-full py-12 text-center text-gray-400 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200">
