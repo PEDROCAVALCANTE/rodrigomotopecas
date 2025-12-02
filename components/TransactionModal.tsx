@@ -137,6 +137,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       rate = config.debit || 0;
       label = `Débito (${config.label})`;
     } else if (paymentMethod === 'CREDIT') {
+      // SAFETY CHECK: Ensure credit config exists before accessing
+      // @ts-ignore
+      if (!config.credit) {
+         return { rawAmount, feeAmount: 0, antecipationFee: 0, net: rawAmount, rate: 0, label: 'Crédito N/A' };
+      }
+
       // @ts-ignore
       const brandData = config.credit[selectedBrand];
       if (brandData) {
@@ -193,7 +199,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
-          {/* Tipo de Movimento */}
+          {/* Tipo de Movimento - RESTRICTED IF INCOME MODE */}
           <div>
             <label className={labelClass}>Tipo de Movimento</label>
             <select 
@@ -202,10 +208,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               className={baseInputClass}
               disabled={!!initialData || isIncomeMode} // Lock if Income Mode
             >
-              <option value={TransactionType.INCOME}>Receita (Entrada)</option>
-              {/* Only show Expense options if we are NOT in strict Income Mode */}
-              {!isIncomeMode && (
+              {isIncomeMode ? (
+                 <option value={TransactionType.INCOME}>Receita (Entrada)</option>
+              ) : (
                 <>
+                  <option value={TransactionType.INCOME}>Receita (Entrada)</option>
                   <option value={TransactionType.EXPENSE_SHOP}>Despesa da Loja</option>
                   <option value={TransactionType.EXPENSE_EMPLOYEE}>Despesa Funcionário</option>
                 </>
@@ -344,7 +351,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                          <label className="text-xs font-bold text-gray-400 mb-2 block">Bandeira:</label>
                          <div className="flex flex-wrap gap-2">
                            {/* @ts-ignore */}
-                           {(Object.keys(currentProviderConfig.credit) as string[]).map((key) => {
+                           {currentProviderConfig.credit && (Object.keys(currentProviderConfig.credit) as string[]).map((key) => {
                               // @ts-ignore
                               const brand = currentProviderConfig.credit[key];
                               return (
