@@ -1,0 +1,408 @@
+import React, { useState, useMemo } from 'react';
+import { Budget, Client, Product, Service, BudgetItem } from '../types';
+import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Clock, DollarSign, Calendar, AlertCircle, Wrench, Package } from 'lucide-react';
+
+interface BudgetsViewProps {
+  budgets: Budget[];
+  clients: Client[];
+  products: Product[];
+  services: Service[];
+  onAddBudget: (b: Omit<Budget, 'id'>) => void;
+  onUpdateBudget: (b: Budget) => void;
+  onDeleteBudget: (id: string) => void;
+}
+
+export const BudgetsView: React.FC<BudgetsViewProps> = ({
+  budgets,
+  clients,
+  products,
+  services,
+  onAddBudget,
+  onUpdateBudget,
+  onDeleteBudget
+}) => {
+  const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  // Form State
+  const [newBudget, setNewBudget] = useState<{
+    clientId: string;
+    items: BudgetItem[];
+    status: 'PENDING' | 'APPROVED' | 'COMPLETED';
+    notes: string;
+  }>({
+    clientId: '',
+    items: [],
+    status: 'PENDING',
+    notes: ''
+  });
+
+  // Item Selector State
+  const [selectedItemType, setSelectedItemType] = useState<'PRODUCT' | 'SERVICE'>('PRODUCT');
+  const [selectedItemId, setSelectedItemId] = useState('');
+  const [selectedItemQty, setSelectedItemQty] = useState(1);
+
+  // Helper to add item to budget list
+  const addItemToBudget = () => {
+    if (!selectedItemId) return;
+
+    let item: BudgetItem | null = null;
+
+    if (selectedItemType === 'PRODUCT') {
+      const prod = products.find(p => p.id === selectedItemId);
+      if (prod) {
+        item = {
+          type: 'PRODUCT',
+          id: prod.id,
+          name: prod.name,
+          quantity: selectedItemQty,
+          unitPrice: prod.sellPrice,
+          totalPrice: prod.sellPrice * selectedItemQty
+        };
+      }
+    } else {
+      const serv = services.find(s => s.id === selectedItemId);
+      if (serv) {
+        item = {
+          type: 'SERVICE',
+          id: serv.id,
+          name: serv.name,
+          quantity: 1, // Service usually 1
+          unitPrice: serv.price,
+          totalPrice: serv.price
+        };
+      }
+    }
+
+    if (item) {
+      setNewBudget(prev => ({ ...prev, items: [...prev.items, item!] }));
+      setSelectedItemId('');
+      setSelectedItemQty(1);
+    }
+  };
+
+  const removeItemFromBudget = (index: number) => {
+    setNewBudget(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const calculateTotal = () => {
+    return newBudget.items.reduce((acc, item) => acc + item.totalPrice, 0);
+  };
+
+  const handleSaveBudget = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBudget.clientId) return;
+
+    const client = clients.find(c => c.id === newBudget.clientId);
+    if (!client) return;
+
+    // Calculate warranty date if status is APPROVED/COMPLETED
+    let warrantyDate = undefined;
+    if (newBudget.status !== 'PENDING') {
+       const d = new Date();
+       d.setDate(d.getDate() + 90);
+       warrantyDate = d.toISOString().split('T')[0];
+    }
+
+    onAddBudget({
+      clientId: client.id,
+      clientName: client.name,
+      motorcycle: client.motorcycle,
+      date: new Date().toISOString().split('T')[0],
+      status: newBudget.status,
+      items: newBudget.items,
+      totalValue: calculateTotal(),
+      notes: newBudget.notes,
+      warrantyDate
+    });
+
+    setShowForm(false);
+    setNewBudget({ clientId: '', items: [], status: 'PENDING', notes: '' });
+  };
+
+  const handleDelete = (id: string) => {
+    if (confirm('Tem certeza que deseja excluir este orçamento?')) {
+      onDeleteBudget(id);
+    }
+  };
+
+  // Filter
+  const filteredBudgets = budgets.filter(b => 
+    b.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    b.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-1">Orçamentos & Garantias</h1>
+          <p className="text-gray-400">Crie orçamentos para clientes com garantia automática de 90 dias.</p>
+        </div>
+        <button 
+          onClick={() => setShowForm(true)}
+          className="bg-moto-600 hover:bg-moto-700 text-white px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-moto-900/30 font-bold"
+        >
+          <Plus size={20} />
+          Novo Orçamento
+        </button>
+      </div>
+
+      {showForm ? (
+        <div className="bg-[#1e1e1e] rounded-2xl shadow-2xl border border-gray-800 overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-moto-500"></div>
+          
+          <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+             <h2 className="text-xl font-bold text-white">Criar Orçamento</h2>
+             <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white">Cancelar</button>
+          </div>
+
+          <form onSubmit={handleSaveBudget} className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+             {/* Left Column: Client & Details */}
+             <div className="lg:col-span-1 space-y-4">
+                <div>
+                   <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">Cliente</label>
+                   <select 
+                     className="w-full bg-[#111] border border-gray-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-moto-500 outline-none"
+                     value={newBudget.clientId}
+                     onChange={e => setNewBudget({...newBudget, clientId: e.target.value})}
+                     required
+                   >
+                     <option value="">Selecione o Cliente...</option>
+                     {clients.map(c => (
+                       <option key={c.id} value={c.id}>{c.name} - {c.motorcycle}</option>
+                     ))}
+                   </select>
+                </div>
+                
+                <div>
+                   <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">Status Inicial</label>
+                   <select 
+                     className="w-full bg-[#111] border border-gray-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-moto-500 outline-none"
+                     value={newBudget.status}
+                     onChange={e => setNewBudget({...newBudget, status: e.target.value as any})}
+                   >
+                     <option value="PENDING">Pendente (Rascunho)</option>
+                     <option value="APPROVED">Aprovado (Iniciar Serviço)</option>
+                     <option value="COMPLETED">Concluído (Entregue)</option>
+                   </select>
+                </div>
+
+                <div>
+                   <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">Observações</label>
+                   <textarea 
+                      className="w-full bg-[#111] border border-gray-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-moto-500 outline-none"
+                      rows={3}
+                      value={newBudget.notes}
+                      onChange={e => setNewBudget({...newBudget, notes: e.target.value})}
+                      placeholder="Ex: Cliente aguardando aprovação..."
+                   />
+                </div>
+
+                <div className="bg-blue-900/10 p-4 rounded-xl border border-blue-500/20">
+                   <div className="flex items-center gap-2 text-blue-400 font-bold mb-1">
+                      <AlertCircle size={16} />
+                      Garantia
+                   </div>
+                   <p className="text-xs text-blue-200 leading-relaxed">
+                      Ao aprovar este orçamento, será gerado automaticamente um termo de garantia de <strong>90 dias</strong> para os serviços prestados.
+                   </p>
+                </div>
+             </div>
+
+             {/* Right Column: Items Builder */}
+             <div className="lg:col-span-2 space-y-4">
+                <div className="bg-[#111] p-4 rounded-xl border border-gray-700">
+                   <h3 className="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Adicionar Itens</h3>
+                   <div className="flex flex-col md:flex-row gap-3">
+                      <div className="flex bg-[#222] rounded-lg p-1 border border-gray-600">
+                         <button 
+                           type="button" 
+                           onClick={() => { setSelectedItemType('PRODUCT'); setSelectedItemId(''); }}
+                           className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${selectedItemType === 'PRODUCT' ? 'bg-moto-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                         >
+                            <Package size={14} /> Peça
+                         </button>
+                         <button 
+                           type="button" 
+                           onClick={() => { setSelectedItemType('SERVICE'); setSelectedItemId(''); }}
+                           className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${selectedItemType === 'SERVICE' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                         >
+                            <Wrench size={14} /> Serviço
+                         </button>
+                      </div>
+
+                      <select 
+                        className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
+                        value={selectedItemId}
+                        onChange={e => setSelectedItemId(e.target.value)}
+                      >
+                         <option value="">Selecione...</option>
+                         {selectedItemType === 'PRODUCT' 
+                           ? products.map(p => <option key={p.id} value={p.id}>{p.name} - R$ {p.sellPrice.toFixed(2)}</option>)
+                           : services.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>)
+                         }
+                      </select>
+
+                      {selectedItemType === 'PRODUCT' && (
+                        <input 
+                          type="number" 
+                          min="1" 
+                          className="w-20 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm text-center"
+                          value={selectedItemQty}
+                          onChange={e => setSelectedItemQty(parseInt(e.target.value) || 1)}
+                        />
+                      )}
+
+                      <button 
+                        type="button"
+                        onClick={addItemToBudget}
+                        className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-bold text-sm"
+                      >
+                         Adicionar
+                      </button>
+                   </div>
+                </div>
+
+                {/* Items Table */}
+                <div className="bg-[#111] rounded-xl border border-gray-700 overflow-hidden">
+                   <table className="w-full text-left text-sm">
+                      <thead className="bg-[#222] text-gray-400 text-xs uppercase">
+                         <tr>
+                            <th className="px-4 py-2">Item</th>
+                            <th className="px-4 py-2 text-center">Qtd</th>
+                            <th className="px-4 py-2 text-right">Unit.</th>
+                            <th className="px-4 py-2 text-right">Total</th>
+                            <th className="px-4 py-2 text-center"></th>
+                         </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-700 text-gray-300">
+                         {newBudget.items.map((item, idx) => (
+                            <tr key={idx}>
+                               <td className="px-4 py-2">
+                                  <div className="flex items-center gap-2">
+                                     {item.type === 'PRODUCT' ? <Package size={14} className="text-moto-500"/> : <Wrench size={14} className="text-blue-500"/>}
+                                     {item.name}
+                                  </div>
+                               </td>
+                               <td className="px-4 py-2 text-center">{item.quantity}</td>
+                               <td className="px-4 py-2 text-right">{item.unitPrice.toFixed(2)}</td>
+                               <td className="px-4 py-2 text-right font-bold text-white">{item.totalPrice.toFixed(2)}</td>
+                               <td className="px-4 py-2 text-center">
+                                  <button type="button" onClick={() => removeItemFromBudget(idx)} className="text-red-500 hover:text-red-400">
+                                     <Trash2 size={14} />
+                                  </button>
+                               </td>
+                            </tr>
+                         ))}
+                         {newBudget.items.length === 0 && (
+                            <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-600">Nenhum item adicionado.</td></tr>
+                         )}
+                      </tbody>
+                   </table>
+                </div>
+
+                <div className="flex justify-end items-center gap-4">
+                   <span className="text-gray-400 text-sm font-bold uppercase">Total do Orçamento:</span>
+                   <span className="text-2xl font-bold text-moto-500">
+                      {calculateTotal().toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                   </span>
+                </div>
+
+                <div className="pt-4 border-t border-gray-800 flex justify-end">
+                   <button 
+                     type="submit" 
+                     className="bg-moto-600 hover:bg-moto-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all"
+                   >
+                      Salvar Orçamento
+                   </button>
+                </div>
+             </div>
+          </form>
+        </div>
+      ) : (
+        // LISTA DE ORÇAMENTOS
+        <>
+          <div className="bg-[#1e1e1e] p-4 rounded-xl border border-gray-800">
+             <div className="relative">
+                <Search className="absolute left-3 top-3 text-gray-500" size={20} />
+                <input 
+                   className="w-full bg-[#111] border border-gray-700 text-white pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-moto-500"
+                   placeholder="Buscar orçamento por cliente ou moto..."
+                   value={searchTerm}
+                   onChange={e => setSearchTerm(e.target.value)}
+                />
+             </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+             {filteredBudgets.map(b => (
+                <div key={b.id} className="bg-[#1e1e1e] rounded-xl shadow-lg border border-gray-800 hover:border-moto-900 transition-all p-5 flex flex-col md:flex-row justify-between gap-4">
+                   <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                         <div className="bg-gray-800 p-2 rounded-lg text-white font-bold text-xs border border-gray-700">
+                            #{b.id.slice(0, 5).toUpperCase()}
+                         </div>
+                         <h3 className="font-bold text-white text-lg">{b.clientName}</h3>
+                         <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase border
+                            ${b.status === 'PENDING' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : ''}
+                            ${b.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : ''}
+                            ${b.status === 'COMPLETED' ? 'bg-green-500/10 text-green-500 border-green-500/20' : ''}
+                         `}>
+                            {b.status === 'PENDING' ? 'Pendente' : (b.status === 'APPROVED' ? 'Aprovado' : 'Concluído')}
+                         </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm text-gray-400">
+                         <div className="flex items-center gap-1.5"><Calendar size={14}/> {new Date(b.date).toLocaleDateString('pt-BR')}</div>
+                         <div className="flex items-center gap-1.5"><Wrench size={14}/> {b.motorcycle}</div>
+                         <div className="flex items-center gap-1.5"><Package size={14}/> {b.items.length} itens</div>
+                      </div>
+
+                      {b.warrantyDate && (
+                         <div className="flex items-center gap-1.5 text-xs text-blue-400 bg-blue-500/5 px-2 py-1 rounded w-fit mt-1">
+                            <CheckCircle size={12} />
+                            Garantia válida até: <strong>{new Date(b.warrantyDate).toLocaleDateString('pt-BR')}</strong>
+                         </div>
+                      )}
+                   </div>
+
+                   <div className="flex flex-col items-end justify-between gap-3">
+                      <div className="text-right">
+                         <span className="block text-xs text-gray-500 uppercase">Valor Total</span>
+                         <span className="text-xl font-bold text-white">
+                            {b.totalValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                         </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-2">
+                         <button 
+                           onClick={() => handleDelete(b.id)} 
+                           className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Excluir"
+                         >
+                            <Trash2 size={18} />
+                         </button>
+                         <button 
+                            className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors border border-gray-700"
+                         >
+                            <Printer size={16} /> Imprimir
+                         </button>
+                      </div>
+                   </div>
+                </div>
+             ))}
+             
+             {filteredBudgets.length === 0 && (
+                <div className="p-12 text-center text-gray-500 bg-[#1e1e1e] rounded-xl border border-dashed border-gray-800">
+                   Nenhum orçamento encontrado.
+                </div>
+             )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};

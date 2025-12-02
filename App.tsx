@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, WifiOff, AlertTriangle, Menu, X, Package } from 'lucide-react';
-import { Transaction, Employee, TransactionType, Client, Product, Service } from './types';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText } from 'lucide-react';
+import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
 import { Financials } from './views/Financials';
 import { EmployeeExpenses } from './views/EmployeeExpenses';
 import { ClientsView } from './views/Clients';
 import { InventoryView } from './views/Inventory';
+import { BudgetsView } from './views/Budgets';
 import { TransactionModal } from './components/TransactionModal';
 import { INITIAL_CLIENTS, INITIAL_EMPLOYEES, INITIAL_TRANSACTIONS, INITIAL_PRODUCTS, INITIAL_SERVICES } from './constants';
 
@@ -24,7 +25,7 @@ import {
 import { signInAnonymously } from 'firebase/auth';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'CLIENTS' | 'INVENTORY' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
+  const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'CLIENTS' | 'INVENTORY' | 'BUDGETS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
   
   // Data State
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -32,6 +33,7 @@ const App: React.FC = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [budgets, setBudgets] = useState<Budget[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
@@ -50,6 +52,7 @@ const App: React.FC = () => {
     let unsubscribeTransactions: () => void;
     let unsubscribeProducts: () => void;
     let unsubscribeServices: () => void;
+    let unsubscribeBudgets: () => void;
 
     const startDemoMode = () => {
       if (!isDemoMode) { 
@@ -150,6 +153,16 @@ const App: React.FC = () => {
           (error) => console.error(error)
         );
 
+        // 6. Budgets (Orçamentos)
+        unsubscribeBudgets = onSnapshot(collection(db, 'budgets'),
+          (snapshot) => {
+             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Budget));
+             data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+             setBudgets(data);
+          },
+          (error) => console.error(error)
+        );
+
       } catch (error) {
         handleFirebaseError(error);
       }
@@ -163,6 +176,7 @@ const App: React.FC = () => {
       if (unsubscribeTransactions) unsubscribeTransactions();
       if (unsubscribeProducts) unsubscribeProducts();
       if (unsubscribeServices) unsubscribeServices();
+      if (unsubscribeBudgets) unsubscribeBudgets();
     };
   }, []);
   
@@ -213,6 +227,10 @@ const App: React.FC = () => {
   const addService = (d: any) => genericAdd('services', d, setServices);
   const updateService = (d: any) => genericUpdate('services', d, setServices);
   const deleteService = (id: string) => genericDelete('services', id, setServices);
+
+  const addBudget = (d: any) => genericAdd('budgets', d, setBudgets);
+  const updateBudget = (d: any) => genericUpdate('budgets', d, setBudgets);
+  const deleteBudget = (id: string) => genericDelete('budgets', id, setBudgets);
 
   // Helper to Seed Database manually (Backup)
   const seedEmployees = async () => {
@@ -297,6 +315,7 @@ const App: React.FC = () => {
           <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" />
           <NavItem view="CLIENTS" icon={BookUser} label="Clientes" />
           <NavItem view="INVENTORY" icon={Package} label="Estoque & Serviços" />
+          <NavItem view="BUDGETS" icon={FileText} label="Orçamentos" />
           <div className="pt-4 pb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             <span className="w-8 h-[1px] bg-gray-700"></span> Financeiro
           </div>
@@ -347,7 +366,7 @@ const App: React.FC = () => {
             <>
               {currentView === 'DASHBOARD' && <Dashboard transactions={transactions} employees={employees} />}
               {currentView === 'EMPLOYEES' && <EmployeesView employees={employees} onAddEmployee={addEmployee} onDeleteEmployee={deleteEmployee} onSeedEmployees={seedEmployees} />}
-              {currentView === 'CLIENTS' && <ClientsView clients={clients} onAddClient={addClient} onDeleteClient={deleteClient} onUpdateClient={updateClient} />}
+              {currentView === 'CLIENTS' && <ClientsView clients={clients} onAddClient={addClient} onDeleteClient={deleteClient} onUpdateClient={updateClient} setCurrentView={setCurrentView} />}
               {currentView === 'INVENTORY' && <InventoryView 
                   products={products} 
                   services={services}
@@ -357,6 +376,15 @@ const App: React.FC = () => {
                   onAddService={addService}
                   onUpdateService={updateService}
                   onDeleteService={deleteService}
+              />}
+              {currentView === 'BUDGETS' && <BudgetsView 
+                  budgets={budgets} 
+                  clients={clients}
+                  products={products}
+                  services={services}
+                  onAddBudget={addBudget}
+                  onUpdateBudget={updateBudget}
+                  onDeleteBudget={deleteBudget}
               />}
               {currentView === 'EXPENSES_SHOP' && <Financials transactions={transactions} employees={employees} activeTab="SHOP" onEditTransaction={openEditTransaction} onDeleteTransaction={deleteTransaction} />}
               {currentView === 'EXPENSES_EMP' && <EmployeeExpenses employees={employees} transactions={transactions} onUpdateEmployee={updateEmployee} onAddTransaction={addTransaction} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} />}

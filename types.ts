@@ -53,6 +53,29 @@ export interface Service {
   description?: string;
 }
 
+// Novos Tipos para Orçamentos
+export interface BudgetItem {
+  type: 'PRODUCT' | 'SERVICE';
+  id: string; // ID do produto ou serviço original
+  name: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
+
+export interface Budget {
+  id: string;
+  clientId: string;
+  clientName: string;
+  motorcycle: string;
+  date: string;
+  status: 'PENDING' | 'APPROVED' | 'COMPLETED';
+  items: BudgetItem[];
+  totalValue: number;
+  notes?: string;
+  warrantyDate?: string; // Data final da garantia (90 dias após aprovação/conclusão)
+}
+
 export interface DashboardStats {
   totalIncome: number;
   totalExpenseShop: number;
