@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Employee, Transaction, TransactionType } from '../types';
-import { User, ChevronRight, ArrowLeft, Save, Plus, Edit2, Trash2, Wallet, Percent, Check, Loader2, Gift } from 'lucide-react';
+import { User, ChevronRight, ArrowLeft, Save, Plus, Edit2, Trash2, Wallet, Percent, Check, Loader2, Gift, DollarSign } from 'lucide-react';
 import { TransactionModal } from '../components/TransactionModal';
 
 interface EmployeeExpensesProps {
@@ -98,35 +98,38 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
     setIsModalOpen(false);
   };
 
-  // --- LIST VIEW ---
+  // --- LIST VIEW (DARK MODE) ---
   if (!activeEmployee) {
     return (
       <div className="space-y-6">
-        <h1 className="text-2xl font-bold text-gray-800">Despesas por Funcionário</h1>
-        <p className="text-gray-500">Selecione um funcionário para editar salário, comissão e gerenciar despesas.</p>
+        <div>
+          <h1 className="text-2xl font-bold text-white">Despesas por Funcionário</h1>
+          <p className="text-gray-400">Selecione um funcionário para editar salário, comissão e gerenciar despesas.</p>
+        </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {employees.map(emp => (
             <button
               key={emp.id}
               onClick={() => setSelectedEmpId(emp.id)}
-              className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-moto-300 transition-all text-left flex items-center justify-between group"
+              className="bg-[#1e1e1e] p-6 rounded-xl border border-gray-800 hover:border-orange-500 hover:shadow-[0_0_15px_rgba(249,115,22,0.1)] transition-all text-left flex items-center justify-between group"
             >
               <div className="flex items-center gap-4">
-                <div className="bg-orange-100 p-3 rounded-full text-orange-600">
+                <div className="bg-orange-500/10 p-3 rounded-full text-orange-500 group-hover:bg-orange-500 group-hover:text-white transition-colors">
                   <User size={24} />
                 </div>
                 <div>
-                  <h3 className="font-bold text-gray-800 text-lg">{emp.name}</h3>
+                  <h3 className="font-bold text-gray-100 text-lg group-hover:text-orange-400 transition-colors">{emp.name}</h3>
                   <p className="text-sm text-gray-500">{emp.role}</p>
                 </div>
               </div>
-              <ChevronRight className="text-gray-300 group-hover:text-moto-500 transition-colors" />
+              <ChevronRight className="text-gray-600 group-hover:text-orange-500 transition-colors" />
             </button>
           ))}
           {employees.length === 0 && (
-            <div className="col-span-full p-8 text-center bg-gray-50 rounded-lg text-gray-400">
-              Nenhum funcionário cadastrado. Vá em "Funcionários" para cadastrar.
+            <div className="col-span-full p-12 text-center bg-[#1e1e1e] rounded-xl border border-dashed border-gray-800 text-gray-500">
+              <User size={48} className="mx-auto mb-4 opacity-20" />
+              <p>Nenhum funcionário cadastrado. Vá em "Funcionários" para cadastrar.</p>
             </div>
           )}
         </div>
@@ -134,46 +137,56 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
     );
   }
 
-  // --- DETAIL VIEW ---
+  // --- DETAIL VIEW (DARK MODE) ---
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex items-center gap-4">
+    <div className="space-y-6 animate-fade-in pb-10">
+      {/* Header */}
+      <div className="flex items-center gap-4 border-b border-gray-800 pb-4">
         <button 
           onClick={() => setSelectedEmpId(null)}
-          className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+          className="p-2 hover:bg-white/5 rounded-full transition-colors text-gray-400 hover:text-white"
         >
-          <ArrowLeft size={24} className="text-gray-600" />
+          <ArrowLeft size={24} />
         </button>
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">{activeEmployee.name}</h1>
-          <p className="text-sm text-gray-500">{activeEmployee.role}</p>
+          <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+            {activeEmployee.name}
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-800 text-gray-400 font-normal border border-gray-700">
+              {activeEmployee.role}
+            </span>
+          </h1>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Settings Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 h-fit overflow-hidden">
-          <div className="bg-gray-50 p-4 border-b border-gray-100 flex items-center gap-2">
-            <Wallet size={20} className="text-moto-600" />
-            <h2 className="text-lg font-bold text-gray-800">Configurações Financeiras</h2>
+        {/* Settings Card (Configurações Financeiras) - HIGH CONTRAST DARK */}
+        <div className="bg-[#1e1e1e] rounded-2xl shadow-xl border border-gray-800 h-fit overflow-hidden relative">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-red-600"></div>
+          
+          <div className="bg-gradient-to-b from-white/5 to-transparent p-5 border-b border-gray-800 flex items-center gap-3">
+            <div className="p-2 bg-orange-500/20 rounded-lg text-orange-500">
+              <Wallet size={20} />
+            </div>
+            <h2 className="text-lg font-bold text-white tracking-wide">Configurações Financeiras</h2>
           </div>
           
           <form onSubmit={handleSaveEmployeeSettings} className="p-6 space-y-6">
             
             {/* Salário Fixo Input */}
             <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">
+                <DollarSign size={14} className="text-orange-500" />
                 Salário Base
               </label>
               <div className="relative group">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <span className="text-gray-400 font-medium text-lg">R$</span>
+                  <span className="text-gray-500 font-bold text-lg group-focus-within:text-orange-500 transition-colors">R$</span>
                 </div>
                 <input 
                   type="number" 
                   step="0.01"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-2xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
+                  className="w-full bg-[#111] border border-gray-700 text-white text-2xl font-bold rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-gray-600 shadow-inner"
                   value={tempEmpData.fixedSalary}
                   onChange={e => setTempEmpData({...tempEmpData, fixedSalary: e.target.value})}
                   placeholder="0.00"
@@ -181,53 +194,57 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
               </div>
             </div>
 
-            {/* Comissão Input */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                Taxa de Comissão
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Percent size={20} className="text-gray-400" />
+            <div className="grid grid-cols-2 gap-4">
+              {/* Comissão Input */}
+              <div>
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">
+                  <Percent size={14} className="text-orange-500" />
+                  Comissão
+                </label>
+                <div className="relative group">
+                  <input 
+                    type="number" 
+                    step="0.1"
+                    className="w-full bg-[#111] border border-gray-700 text-white text-xl font-bold rounded-xl py-3 px-4 text-center focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-gray-600 shadow-inner"
+                    value={tempEmpData.commissionRate}
+                    onChange={e => setTempEmpData({...tempEmpData, commissionRate: e.target.value})}
+                    placeholder="0"
+                  />
+                  <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                    <span className="text-gray-500 font-bold group-focus-within:text-orange-500 transition-colors">%</span>
+                  </div>
                 </div>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
-                  value={tempEmpData.commissionRate}
-                  onChange={e => setTempEmpData({...tempEmpData, commissionRate: e.target.value})}
-                  placeholder="0"
-                />
               </div>
-            </div>
 
-            {/* Gratificação Input */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">
-                Gratificação Fixa
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <Gift size={20} className="text-gray-400" />
+              {/* Gratificação Input */}
+              <div>
+                <label className="flex items-center gap-2 text-xs font-bold text-gray-400 mb-2 uppercase tracking-wider">
+                  <Gift size={14} className="text-orange-500" />
+                  Bônus
+                </label>
+                <div className="relative group">
+                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-500 font-bold text-xs group-focus-within:text-orange-500 transition-colors">R$</span>
+                  </div>
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    className="w-full bg-[#111] border border-gray-700 text-white text-xl font-bold rounded-xl py-3 pl-8 pr-2 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-gray-600 shadow-inner"
+                    value={tempEmpData.bonus}
+                    onChange={e => setTempEmpData({...tempEmpData, bonus: e.target.value})}
+                    placeholder="0"
+                  />
                 </div>
-                <input 
-                  type="number" 
-                  step="0.01"
-                  className="w-full bg-gray-50 border border-gray-200 text-gray-900 text-xl font-bold rounded-xl py-3 pl-12 pr-4 focus:ring-2 focus:ring-moto-500 focus:bg-white focus:border-moto-500 outline-none transition-all placeholder-gray-300"
-                  value={tempEmpData.bonus}
-                  onChange={e => setTempEmpData({...tempEmpData, bonus: e.target.value})}
-                  placeholder="0.00"
-                />
               </div>
             </div>
 
             <button 
               type="submit"
               disabled={isSaving || showSuccess}
-              className={`w-full font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98]
+              className={`w-full font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] uppercase tracking-wide text-sm
                 ${showSuccess 
-                  ? 'bg-green-600 hover:bg-green-700 text-white shadow-green-600/20' 
-                  : 'bg-moto-600 hover:bg-moto-700 text-white shadow-moto-600/20'
+                  ? 'bg-green-600 hover:bg-green-500 text-white shadow-green-900/20' 
+                  : 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/20'
                 }`}
             >
               {isSaving ? (
@@ -250,60 +267,60 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
           </form>
         </div>
 
-        {/* Expenses List */}
+        {/* Expenses List (Tabela Dark Mode) */}
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-[#1e1e1e] rounded-2xl shadow-lg border border-gray-800 overflow-hidden">
+            <div className="p-6 border-b border-gray-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#1e1e1e]">
               <div>
-                <h2 className="text-lg font-bold text-gray-800">Despesas e Vales</h2>
-                <p className="text-sm text-gray-500">
-                  Total acumulado: <span className="font-bold text-red-600">{totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+                <h2 className="text-lg font-bold text-white">Despesas e Vales</h2>
+                <p className="text-sm text-gray-400 mt-1">
+                  Total acumulado: <span className="font-bold text-red-500 text-lg ml-1">{totalExpense.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
                 </p>
               </div>
               <button 
                 onClick={openAddModal}
-                className="bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                className="bg-red-500/10 hover:bg-red-500 hover:text-white text-red-500 border border-red-500/20 px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-lg shadow-red-900/10"
               >
-                <Plus size={16} />
+                <Plus size={18} />
                 Lançar Despesa
               </button>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left">
-                <thead className="bg-gray-50 text-gray-500 text-xs uppercase">
+                <thead className="bg-[#111] text-gray-400 text-xs uppercase border-b border-gray-800">
                   <tr>
-                    <th className="px-4 py-3 font-medium">Data</th>
-                    <th className="px-4 py-3 font-medium">Descrição</th>
-                    <th className="px-4 py-3 font-medium text-right">Valor</th>
-                    <th className="px-4 py-3 font-medium text-center">Ações</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Data</th>
+                    <th className="px-6 py-4 font-bold tracking-wider">Descrição</th>
+                    <th className="px-6 py-4 font-bold tracking-wider text-right">Valor</th>
+                    <th className="px-6 py-4 font-bold tracking-wider text-center">Ações</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-800">
                   {employeeTransactions.map(t => (
-                    <tr key={t.id} className="hover:bg-gray-50 group">
-                      <td className="px-4 py-3 text-sm text-gray-600">
+                    <tr key={t.id} className="hover:bg-white/5 transition-colors group">
+                      <td className="px-6 py-4 text-sm text-gray-300 font-mono">
                         {new Date(t.date).toLocaleDateString('pt-BR')}
                       </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 font-medium">
-                        {t.description}
-                        <div className="text-xs text-gray-400 font-normal">{t.category}</div>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-100 font-medium">{t.description}</div>
+                        <div className="text-xs text-gray-500 mt-0.5 inline-block px-1.5 py-0.5 rounded bg-gray-800">{t.category}</div>
                       </td>
-                      <td className="px-4 py-3 text-sm font-bold text-red-600 text-right">
+                      <td className="px-6 py-4 text-sm font-bold text-red-500 text-right">
                         - {t.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-6 py-4 text-center">
                         <div className="flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button 
                             onClick={() => openEditModal(t)}
-                            className="p-1.5 hover:bg-blue-100 text-blue-600 rounded" 
+                            className="p-2 hover:bg-blue-500/20 text-blue-500 rounded-lg transition-colors" 
                             title="Editar"
                           >
                             <Edit2 size={16} />
                           </button>
                           <button 
                             onClick={() => onDeleteTransaction(t.id)}
-                            className="p-1.5 hover:bg-red-100 text-red-600 rounded" 
+                            className="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-colors" 
                             title="Excluir"
                           >
                             <Trash2 size={16} />
@@ -314,7 +331,7 @@ export const EmployeeExpenses: React.FC<EmployeeExpensesProps> = ({
                   ))}
                   {employeeTransactions.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-6 py-8 text-center text-gray-400 text-sm">
+                      <td colSpan={4} className="px-6 py-12 text-center text-gray-500 text-sm">
                         Nenhuma despesa registrada para este funcionário.
                       </td>
                     </tr>
