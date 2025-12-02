@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Budget, Client, Product, Service, BudgetItem } from '../types';
-import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Clock, DollarSign, Calendar, AlertCircle, Wrench, Package } from 'lucide-react';
+import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Clock, DollarSign, Calendar, AlertCircle, Wrench, Package, Loader2, Save, Check } from 'lucide-react';
 
 interface BudgetsViewProps {
   budgets: Budget[];
@@ -24,6 +24,10 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // UI States
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
   // Form State
   const [newBudget, setNewBudget] = useState<{
     clientId: string;
@@ -95,19 +99,17 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
   const handleSaveBudget = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBudget.clientId) return;
+    
+    setIsSaving(true);
 
     const client = clients.find(c => c.id === newBudget.clientId);
-    if (!client) return;
-
-    // Calculate warranty date if status is APPROVED/COMPLETED
-    let warrantyDate = undefined;
-    if (newBudget.status !== 'PENDING') {
-       const d = new Date();
-       d.setDate(d.getDate() + 90);
-       warrantyDate = d.toISOString().split('T')[0];
+    if (!client) {
+        setIsSaving(false);
+        return;
     }
 
-    onAddBudget({
+    // Construct the payload safely
+    const budgetPayload: any = {
       clientId: client.id,
       clientName: client.name,
       motorcycle: client.motorcycle,
@@ -116,11 +118,28 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
       items: newBudget.items,
       totalValue: calculateTotal(),
       notes: newBudget.notes,
-      warrantyDate
-    });
+    };
 
-    setShowForm(false);
-    setNewBudget({ clientId: '', items: [], status: 'PENDING', notes: '' });
+    // Only add warrantyDate if status is not PENDING
+    if (newBudget.status !== 'PENDING') {
+       const d = new Date();
+       d.setDate(d.getDate() + 90);
+       budgetPayload.warrantyDate = d.toISOString().split('T')[0];
+    }
+
+    // Simulate network delay for UX
+    setTimeout(() => {
+        onAddBudget(budgetPayload);
+
+        setIsSaving(false);
+        setSaveSuccess(true);
+
+        setTimeout(() => {
+            setSaveSuccess(false);
+            setShowForm(false);
+            setNewBudget({ clientId: '', items: [], status: 'PENDING', notes: '' });
+        }, 1500);
+    }, 800);
   };
 
   const handleDelete = (id: string) => {
@@ -129,26 +148,112 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
     }
   };
 
+  const handlePrint = (b: Budget) => {
+      const printWindow = window.open('', '', 'width=800,height=600');
+      if (printWindow) {
+          printWindow.document.write(`
+              <html>
+              <head>
+                  <title>Orçamento - Rodrigo MotoPeças</title>
+                  <style>
+                      body { font-family: Arial, sans-serif; padding: 20px; }
+                      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+                      .title { font-size: 24px; font-weight: bold; }
+                      .subtitle { font-size: 14px; color: #555; }
+                      .info { margin-bottom: 20px; }
+                      .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                      .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                      .table th { background-color: #f2f2f2; }
+                      .total { text-align: right; font-size: 20px; font-weight: bold; margin-top: 20px; }
+                      .footer { margin-top: 40px; font-size: 12px; text-align: center; color: #555; border-top: 1px solid #ccc; padding-top: 10px; }
+                      .warranty { background: #eef; padding: 10px; border-radius: 5px; margin-top: 20px; font-size: 12px; }
+                  </style>
+              </head>
+              <body>
+                  <div class="header">
+                      <div class="title">RODRIGO MOTOPEÇAS & ATACAREJO</div>
+                      <div class="subtitle">Orçamento de Peças e Serviços</div>
+                  </div>
+                  
+                  <div class="info">
+                      <strong>Cliente:</strong> ${b.clientName}<br>
+                      <strong>Moto:</strong> ${b.motorcycle}<br>
+                      <strong>Data:</strong> ${new Date(b.date).toLocaleDateString('pt-BR')}<br>
+                      <strong>Status:</strong> ${b.status === 'PENDING' ? 'Pendente' : 'Aprovado'}
+                  </div>
+
+                  <table class="table">
+                      <thead>
+                          <tr>
+                              <th>Item</th>
+                              <th>Tipo</th>
+                              <th>Qtd</th>
+                              <th>Unitário</th>
+                              <th>Total</th>
+                          </tr>
+                      </thead>
+                      <tbody>
+                          ${b.items.map(item => `
+                              <tr>
+                                  <td>${item.name}</td>
+                                  <td>${item.type === 'PRODUCT' ? 'Peça' : 'Serviço'}</td>
+                                  <td>${item.quantity}</td>
+                                  <td>R$ ${item.unitPrice.toFixed(2)}</td>
+                                  <td>R$ ${item.totalPrice.toFixed(2)}</td>
+                              </tr>
+                          `).join('')}
+                      </tbody>
+                  </table>
+
+                  <div class="total">
+                      Total: R$ ${b.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+
+                  ${b.warrantyDate ? `
+                  <div class="warranty">
+                      <strong>TERMO DE GARANTIA:</strong><br>
+                      Garantia válida até ${new Date(b.warrantyDate).toLocaleDateString('pt-BR')} (90 dias) referente aos serviços prestados e peças substituídas, 
+                      mediante apresentação deste documento. A garantia não cobre mau uso.
+                  </div>
+                  ` : ''}
+
+                  ${b.notes ? `<div style="margin-top: 20px; font-style: italic;">Obs: ${b.notes}</div>` : ''}
+
+                  <div class="footer">
+                      Obrigado pela preferência!
+                  </div>
+                  <script>window.print();</script>
+              </body>
+              </html>
+          `);
+          printWindow.document.close();
+      }
+  };
+
   // Filter
-  const filteredBudgets = budgets.filter(b => 
-    b.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    b.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredBudgets = useMemo(() => {
+    return budgets.filter(b => 
+        b.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        b.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [budgets, searchTerm]);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 animate-fade-in pb-12">
       <div className="flex flex-col md:flex-row justify-between md:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Orçamentos & Garantias</h1>
           <p className="text-gray-400">Crie orçamentos para clientes com garantia automática de 90 dias.</p>
         </div>
-        <button 
-          onClick={() => setShowForm(true)}
-          className="bg-moto-600 hover:bg-moto-700 text-white px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-moto-900/30 font-bold"
-        >
-          <Plus size={20} />
-          Novo Orçamento
-        </button>
+        {!showForm && (
+            <button 
+            onClick={() => setShowForm(true)}
+            className="bg-moto-600 hover:bg-moto-700 text-white px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-moto-900/30 font-bold"
+            >
+            <Plus size={20} />
+            Novo Orçamento
+            </button>
+        )}
       </div>
 
       {showForm ? (
@@ -157,7 +262,13 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
           
           <div className="p-6 border-b border-gray-800 flex justify-between items-center">
              <h2 className="text-xl font-bold text-white">Criar Orçamento</h2>
-             <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-white">Cancelar</button>
+             <button 
+                onClick={() => setShowForm(false)} 
+                className="text-gray-500 hover:text-white transition-colors"
+                disabled={isSaving}
+             >
+                 Cancelar
+             </button>
           </div>
 
           <form onSubmit={handleSaveBudget} className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -315,9 +426,27 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                 <div className="pt-4 border-t border-gray-800 flex justify-end">
                    <button 
                      type="submit" 
-                     className="bg-moto-600 hover:bg-moto-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all"
+                     disabled={isSaving || saveSuccess}
+                     className={`px-8 py-3 rounded-xl font-bold shadow-lg transition-all flex items-center gap-2
+                        ${saveSuccess 
+                            ? 'bg-green-600 text-white' 
+                            : 'bg-moto-600 hover:bg-moto-700 text-white'
+                        }
+                     `}
                    >
-                      Salvar Orçamento
+                      {isSaving ? (
+                        <>
+                           <Loader2 size={18} className="animate-spin" />
+                           Salvando...
+                        </>
+                      ) : saveSuccess ? (
+                        <>
+                           <Check size={18} />
+                           Orçamento Salvo!
+                        </>
+                      ) : (
+                        'Salvar Orçamento'
+                      )}
                    </button>
                 </div>
              </div>
@@ -386,6 +515,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                             <Trash2 size={18} />
                          </button>
                          <button 
+                            onClick={() => handlePrint(b)}
                             className="bg-gray-800 hover:bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors border border-gray-700"
                          >
                             <Printer size={16} /> Imprimir
