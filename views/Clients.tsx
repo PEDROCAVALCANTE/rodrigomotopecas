@@ -112,23 +112,26 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
           <form onSubmit={handleSubmit} className="space-y-4">
             
             {/* Seletor Tipo de Cliente */}
-            <div className="flex gap-4 p-1 bg-gray-800 rounded-lg w-fit border border-gray-700">
-              <button
-                type="button"
-                onClick={() => setNewClient({...newClient, type: 'INDIVIDUAL'})}
-                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${newClient.type === 'INDIVIDUAL' ? 'bg-moto-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-              >
-                <User size={16} />
-                Particular
-              </button>
-              <button
-                type="button"
-                onClick={() => setNewClient({...newClient, type: 'COMPANY'})}
-                className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${newClient.type === 'COMPANY' ? 'bg-moto-600 text-white shadow-sm' : 'text-gray-400 hover:text-gray-200'}`}
-              >
-                <Building2 size={16} />
-                Empresa
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-400 mb-2 uppercase tracking-wide">Tipo de Pessoa</label>
+              <div className="flex gap-4 p-1 bg-gray-800 rounded-lg w-fit border border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => setNewClient({...newClient, type: 'INDIVIDUAL'})}
+                  className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${newClient.type === 'INDIVIDUAL' ? 'bg-moto-600 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  <User size={16} />
+                  Particular
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNewClient({...newClient, type: 'COMPANY'})}
+                  className={`px-4 py-2 rounded-md text-sm font-bold flex items-center gap-2 transition-all ${newClient.type === 'COMPANY' ? 'bg-moto-600 text-white shadow-sm' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                >
+                  <Building2 size={16} />
+                  Empresa
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
