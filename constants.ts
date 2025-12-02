@@ -15,16 +15,39 @@ export const CATEGORIES = [
   'Outros',
 ];
 
-// Taxas baseadas nos prints enviados
-export const MACHINE_FEES = {
-  PIX: { label: 'Pix', rate: 0.49 },
-  DEBIT: { label: 'Débito', rate: 0.99 },
-  CREDIT: {
-    master: { label: 'MasterCard', spot: 2.83, installment: 2.39 },
-    visa: { label: 'Visa', spot: 2.83, installment: 2.39 },
-    elo: { label: 'Elo', spot: 3.64, installment: 3.19 },
-    amex: { label: 'Amex', spot: 3.64, installment: 3.64 }, // Usando taxa base similar
-    hiper: { label: 'Hiper', spot: 5.55, installment: 5.55 },
+// Opções específicas para Receitas/Caixa
+export const INCOME_SOURCES = [
+  'Rede',
+  'Stone',
+  'Mercado Pago',
+  'Pix',
+  'Dinheiro'
+];
+
+// Nova Configuração de Taxas por Maquininha
+export const MACHINE_CONFIG = {
+  REDE: {
+    label: 'Rede',
+    methods: ['CREDIT'],
+    credit: {
+      master: { label: 'MasterCard', spot: 2.83, installment: 2.39 },
+      visa: { label: 'Visa', spot: 2.83, installment: 2.39 }
+    }
+  },
+  STONE: {
+    label: 'Stone',
+    methods: ['CREDIT'],
+    credit: {
+      master: { label: 'MasterCard', spot: 2.18, installment: 2.18 },
+      visa: { label: 'Visa', spot: 2.18, installment: 2.18 },
+      elo: { label: 'Elo', spot: 3.24, installment: 3.24 }
+    }
+  },
+  MERCADO_PAGO: {
+    label: 'Mercado Pago',
+    methods: ['DEBIT', 'PIX'],
+    debit: 0.99,
+    pix: 0.49
   }
 };
 

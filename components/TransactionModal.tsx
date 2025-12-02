@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TransactionType, Employee, Transaction } from '../types';
-import { CATEGORIES, MACHINE_FEES, ANTECIPATION_RATE } from '../constants';
-import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote } from 'lucide-react';
+import { CATEGORIES, INCOME_SOURCES, MACHINE_CONFIG, ANTECIPATION_RATE } from '../constants';
+import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote, Landmark } from 'lucide-react';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -25,13 +25,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [type, setType] = useState<TransactionType>(defaultType || TransactionType.EXPENSE_SHOP);
   const [employeeId, setEmployeeId] = useState('');
-  const [category, setCategory] = useState(CATEGORIES[0]);
+  const [category, setCategory] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);
 
   // --- Calculator States ---
   const [showCalculator, setShowCalculator] = useState(false);
+  const [provider, setProvider] = useState<keyof typeof MACHINE_CONFIG>('REDE');
   const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'DEBIT' | 'CREDIT'>('CREDIT');
-  const [selectedBrand, setSelectedBrand] = useState<keyof typeof MACHINE_FEES.CREDIT>('visa');
+  const [selectedBrand, setSelectedBrand] = useState<string>('visa');
   const [isInstallmentMode, setIsInstallmentMode] = useState(false); // false = Sem juros (spot), true = Com juros
   const [useAntecipation, setUseAntecipation] = useState(false);
 
@@ -43,7 +44,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setDate(initialData.date);
       setType(initialData.type);
       setEmployeeId(initialData.employeeId || '');
-      setCategory(initialData.category || CATEGORIES[0]);
+      setCategory(initialData.category || '');
       setShowCalculator(false);
       setAmountError(null);
     } else if (isOpen) {
@@ -52,11 +53,32 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setDate(new Date().toISOString().split('T')[0]);
       setType(defaultType || TransactionType.EXPENSE_SHOP);
       setEmployeeId('');
-      setCategory(CATEGORIES[0]);
+      // Set default category based on type
+      if (defaultType === TransactionType.INCOME) {
+          setCategory(INCOME_SOURCES[0]);
+      } else {
+          setCategory(CATEGORIES[0]);
+      }
       setShowCalculator(false);
       setAmountError(null);
+      
+      // Reset Calc
+      setProvider('REDE');
+      setPaymentMethod('CREDIT');
     }
   }, [isOpen, initialData, defaultType]);
+
+  // Handle Provider Change to reset incompatible methods
+  useEffect(() => {
+    const config = MACHINE_CONFIG[provider];
+    if (config.methods.includes('CREDIT')) {
+      setPaymentMethod('CREDIT');
+    } else if (config.methods.includes('DEBIT')) {
+      setPaymentMethod('DEBIT');
+    } else if (config.methods.includes('PIX')) {
+      setPaymentMethod('PIX');
+    }
+  }, [provider]);
 
   if (!isOpen) return null;
 
@@ -103,18 +125,24 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     const rawAmount = parseFloat(amount) || 0;
     let rate = 0;
     let label = '';
+    
+    const config = MACHINE_CONFIG[provider];
 
     if (paymentMethod === 'PIX') {
-      rate = MACHINE_FEES.PIX.rate;
-      label = 'Pix';
+      // @ts-ignore
+      rate = config.pix || 0;
+      label = `Pix (${config.label})`;
     } else if (paymentMethod === 'DEBIT') {
-      rate = MACHINE_FEES.DEBIT.rate;
-      label = 'Débito';
-    } else {
-      // CREDIT
-      const brandData = MACHINE_FEES.CREDIT[selectedBrand];
-      rate = isInstallmentMode ? (brandData.installment || brandData.spot) : brandData.spot;
-      label = `${brandData.label} ${isInstallmentMode ? '(Com Juros)' : '(À Vista)'}`;
+      // @ts-ignore
+      rate = config.debit || 0;
+      label = `Débito (${config.label})`;
+    } else if (paymentMethod === 'CREDIT') {
+      // @ts-ignore
+      const brandData = config.credit[selectedBrand];
+      if (brandData) {
+        rate = isInstallmentMode ? brandData.installment : brandData.spot;
+        label = `${brandData.label} - ${isInstallmentMode ? 'Com Juros' : 'Sem Juros'} (${config.label})`;
+      }
     }
     
     const feeAmount = rawAmount * (rate / 100);
@@ -133,14 +161,19 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     const { net, label } = getCalculatedValues();
     setAmount(net.toFixed(2));
     setDescription(prev => `${prev ? prev + ' - ' : ''}Venda ${label}`);
+    setCategory(MACHINE_CONFIG[provider].label); // Auto-set category to provider name
     setShowCalculator(false);
     setAmountError(null);
   };
 
   const calc = getCalculatedValues();
+  const currentProviderConfig = MACHINE_CONFIG[provider];
 
   const baseInputClass = "w-full px-4 py-3 bg-[#333333] border-transparent focus:ring-2 focus:ring-moto-500 focus:bg-[#404040] text-white rounded-lg placeholder-gray-500 outline-none transition-all resize-none";
   const labelClass = "block text-sm text-gray-600 mb-1.5 font-medium";
+
+  // Determine which categories to show
+  const currentCategories = type === TransactionType.INCOME ? INCOME_SOURCES : CATEGORIES;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
@@ -228,7 +261,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           </div>
 
-          {/* CALCULADORA DE TAXAS (STONE) */}
+          {/* CALCULADORA DE TAXAS (STONE/REDE/MP) - Apenas para Receita */}
           {type === TransactionType.INCOME && !initialData && amount && parseFloat(amount) > 0 && !amountError && (
             <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
               <button 
@@ -237,57 +270,88 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                 className="flex items-center gap-2 text-sm font-bold text-moto-600 w-full hover:underline"
               >
                 <Calculator size={16} />
-                {showCalculator ? 'Ocultar Calculadora' : 'Descontar Taxas da Maquininha'}
+                {showCalculator ? 'Ocultar Calculadora' : 'Calcular Taxas (Maquininha)'}
               </button>
 
               {showCalculator && (
                 <div className="mt-4 space-y-4 animate-fade-in">
                   
-                  {/* Selector de Método */}
+                  {/* SELETOR DE PROVEDOR (MAQUININHA) */}
+                  <div>
+                    <label className="text-xs font-bold text-gray-500 mb-2 block uppercase">Selecione a Maquininha:</label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(Object.keys(MACHINE_CONFIG) as Array<keyof typeof MACHINE_CONFIG>).map((key) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => setProvider(key)}
+                          className={`py-2 text-xs font-bold rounded-lg border transition-all
+                            ${provider === key 
+                              ? 'bg-gray-800 text-white border-gray-800 shadow-md' 
+                              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}`}
+                        >
+                          {MACHINE_CONFIG[key].label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Selector de Método (Baseado no Provedor) */}
                   <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('PIX')}
-                      className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'PIX' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
-                    >
-                      <Smartphone size={14} /> Pix
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('DEBIT')}
-                      className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'DEBIT' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
-                    >
-                      <Banknote size={14} /> Débito
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setPaymentMethod('CREDIT')}
-                      className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'CREDIT' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
-                    >
-                      <CreditCard size={14} /> Crédito
-                    </button>
+                    {currentProviderConfig.methods.includes('PIX') && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('PIX')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'PIX' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
+                      >
+                        <Smartphone size={14} /> Pix
+                      </button>
+                    )}
+                    {currentProviderConfig.methods.includes('DEBIT') && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('DEBIT')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'DEBIT' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
+                      >
+                        <Banknote size={14} /> Débito
+                      </button>
+                    )}
+                    {currentProviderConfig.methods.includes('CREDIT') && (
+                      <button
+                        type="button"
+                        onClick={() => setPaymentMethod('CREDIT')}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'CREDIT' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
+                      >
+                        <CreditCard size={14} /> Crédito
+                      </button>
+                    )}
                   </div>
 
                   {/* Opções de Crédito */}
                   {paymentMethod === 'CREDIT' && (
                     <div className="space-y-3 p-3 bg-white rounded-lg border border-gray-100">
-                       {/* Bandeiras */}
+                       {/* Bandeiras Dinâmicas */}
                        <div>
                          <label className="text-xs font-bold text-gray-500 mb-2 block">Bandeira:</label>
                          <div className="flex flex-wrap gap-2">
-                           {(Object.keys(MACHINE_FEES.CREDIT) as Array<keyof typeof MACHINE_FEES.CREDIT>).map((key) => (
-                              <button
-                                key={key}
-                                type="button"
-                                onClick={() => setSelectedBrand(key)}
-                                className={`px-2 py-1 rounded border text-xs font-semibold transition-colors
-                                  ${selectedBrand === key 
-                                    ? 'bg-moto-600 text-white border-moto-600' 
-                                    : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-moto-400'}`}
-                              >
-                                {MACHINE_FEES.CREDIT[key].label}
-                              </button>
-                           ))}
+                           {/* @ts-ignore */}
+                           {(Object.keys(currentProviderConfig.credit) as string[]).map((key) => {
+                              // @ts-ignore
+                              const brand = currentProviderConfig.credit[key];
+                              return (
+                                <button
+                                  key={key}
+                                  type="button"
+                                  onClick={() => setSelectedBrand(key)}
+                                  className={`px-2 py-1 rounded border text-xs font-semibold transition-colors
+                                    ${selectedBrand === key 
+                                      ? 'bg-moto-600 text-white border-moto-600' 
+                                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-moto-400'}`}
+                                >
+                                  {brand.label}
+                                </button>
+                              )
+                           })}
                          </div>
                        </div>
 
@@ -366,18 +430,20 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           )}
 
-          {/* Categoria */}
+          {/* Categoria / Origem */}
           <div>
-            <label className={labelClass}>Categoria</label>
+            <label className={labelClass}>
+              {type === TransactionType.INCOME ? 'Origem / Método' : 'Categoria'}
+            </label>
             <input 
               list="categories" 
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className={baseInputClass}
-              placeholder="Selecione ou digite..."
+              placeholder={type === TransactionType.INCOME ? "Ex: Rede, Stone, Pix..." : "Selecione ou digite..."}
             />
             <datalist id="categories">
-              {CATEGORIES.map(c => <option key={c} value={c} />)}
+              {currentCategories.map(c => <option key={c} value={c} />)}
             </datalist>
           </div>
 

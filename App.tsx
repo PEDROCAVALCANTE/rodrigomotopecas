@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -8,6 +8,7 @@ import { EmployeeExpenses } from './views/EmployeeExpenses';
 import { ClientsView } from './views/Clients';
 import { InventoryView } from './views/Inventory';
 import { BudgetsView } from './views/Budgets';
+import { CashierView } from './views/Cashier';
 import { TransactionModal } from './components/TransactionModal';
 import { INITIAL_CLIENTS, INITIAL_EMPLOYEES, INITIAL_TRANSACTIONS, INITIAL_PRODUCTS, INITIAL_SERVICES } from './constants';
 
@@ -25,7 +26,7 @@ import {
 import { signInAnonymously } from 'firebase/auth';
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'DASHBOARD' | 'EMPLOYEES' | 'CLIENTS' | 'INVENTORY' | 'BUDGETS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
+  const [currentView, setCurrentView] = useState<'DASHBOARD' | 'CASHIER' | 'EMPLOYEES' | 'CLIENTS' | 'INVENTORY' | 'BUDGETS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
   
   // Data State
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -312,6 +313,7 @@ const App: React.FC = () => {
         
         <nav className="flex-1 p-4 space-y-2 mt-2 overflow-y-auto">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
+          <NavItem view="CASHIER" icon={Landmark} label="Caixa" />
           <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" />
           <NavItem view="CLIENTS" icon={BookUser} label="Clientes" />
           <NavItem view="INVENTORY" icon={Package} label="Estoque & Serviços" />
@@ -322,16 +324,6 @@ const App: React.FC = () => {
           <NavItem view="EXPENSES_SHOP" icon={Receipt} label="Despesas da Loja" />
           <NavItem view="EXPENSES_EMP" icon={Users} label="Despesa Funcionário" />
         </nav>
-
-        <div className="p-4 border-t border-gray-800 bg-black">
-          <button 
-            onClick={() => { openNewTransaction(); setIsMobileMenuOpen(false); }}
-            className="w-full bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white py-3 px-4 rounded-xl flex items-center justify-center gap-2 font-bold transition-all shadow-lg shadow-orange-900/20 transform hover:-translate-y-0.5"
-          >
-            <PlusCircle size={20} />
-            <span>Novo Lançamento</span>
-          </button>
-        </div>
       </aside>
 
       {/* Main Content */}
@@ -353,7 +345,6 @@ const App: React.FC = () => {
                 <div><h1 className="font-black italic uppercase leading-none text-lg" style={{ fontFamily: 'Impact, sans-serif' }}>RODRIGO</h1></div>
              </div>
           </div>
-          <button onClick={() => openNewTransaction()} className="bg-orange-600 p-2 rounded-full shadow-lg text-white"><PlusCircle size={22} /></button>
         </header>
 
         <div className="p-4 md:p-8 max-w-7xl mx-auto pb-24">
@@ -365,6 +356,13 @@ const App: React.FC = () => {
           ) : (
             <>
               {currentView === 'DASHBOARD' && <Dashboard transactions={transactions} employees={employees} />}
+              {currentView === 'CASHIER' && <CashierView 
+                 transactions={transactions} 
+                 onAddTransaction={addTransaction}
+                 onEditTransaction={openEditTransaction}
+                 onDeleteTransaction={deleteTransaction}
+                 onOpenNewTransaction={openNewTransaction}
+              />}
               {currentView === 'EMPLOYEES' && <EmployeesView employees={employees} onAddEmployee={addEmployee} onDeleteEmployee={deleteEmployee} onSeedEmployees={seedEmployees} />}
               {currentView === 'CLIENTS' && <ClientsView clients={clients} onAddClient={addClient} onDeleteClient={deleteClient} onUpdateClient={updateClient} setCurrentView={setCurrentView} />}
               {currentView === 'INVENTORY' && <InventoryView 

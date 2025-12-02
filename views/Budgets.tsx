@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Budget, Client, Product, Service, BudgetItem } from '../types';
-import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Clock, DollarSign, Calendar, AlertCircle, Wrench, Package, Loader2, Save, Check } from 'lucide-react';
+import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Calendar, AlertCircle, Wrench, Package, Loader2, Check } from 'lucide-react';
 
 interface BudgetsViewProps {
   budgets: Budget[];
@@ -145,6 +145,19 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
   const handleDelete = (id: string) => {
     if (confirm('Tem certeza que deseja excluir este orçamento?')) {
       onDeleteBudget(id);
+    }
+  };
+
+  const handleApprove = (b: Budget) => {
+    if (confirm(`Deseja aprovar o orçamento de ${b.clientName}? A garantia de 90 dias será iniciada.`)) {
+      const warrantyDate = new Date();
+      warrantyDate.setDate(warrantyDate.getDate() + 90);
+
+      onUpdateBudget({
+        ...b,
+        status: 'APPROVED',
+        warrantyDate: warrantyDate.toISOString().split('T')[0]
+      });
     }
   };
 
@@ -508,6 +521,17 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                       </div>
                       
                       <div className="flex items-center gap-2">
+                         {/* Botão de Aprovar para orçamentos pendentes */}
+                         {b.status === 'PENDING' && (
+                           <button 
+                             onClick={() => handleApprove(b)}
+                             className="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition-colors shadow-lg shadow-green-900/20"
+                             title="Aprovar e Gerar Garantia"
+                           >
+                             <CheckCircle size={14} /> Aprovar
+                           </button>
+                         )}
+
                          <button 
                            onClick={() => handleDelete(b.id)} 
                            className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition-colors" title="Excluir"
