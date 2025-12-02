@@ -15,7 +15,7 @@ export const CATEGORIES = [
   'Outros',
 ];
 
-// Opções específicas para Receitas/Caixa
+// Opções específicas para Receitas/Caixa - Atualizado conforme solicitação
 export const INCOME_SOURCES = [
   'Rede',
   'Stone',
@@ -24,30 +24,30 @@ export const INCOME_SOURCES = [
   'Dinheiro'
 ];
 
-// Nova Configuração de Taxas por Maquininha
+// Configuração de Taxas por Maquininha
 export const MACHINE_CONFIG = {
   REDE: {
     label: 'Rede',
     methods: ['CREDIT'],
     credit: {
-      master: { label: 'MasterCard', spot: 2.83, installment: 2.39 },
-      visa: { label: 'Visa', spot: 2.83, installment: 2.39 }
+      master: { label: 'MasterCard', spot: 2.83, installment: 2.39 }, // Sem juros: 2.83%, Com juros: 2.39%
+      visa: { label: 'Visa', spot: 2.83, installment: 2.39 }         // Sem juros: 2.83%, Com juros: 2.39%
     }
   },
   STONE: {
     label: 'Stone',
     methods: ['CREDIT'],
     credit: {
-      master: { label: 'MasterCard', spot: 2.18, installment: 2.18 },
-      visa: { label: 'Visa', spot: 2.18, installment: 2.18 },
-      elo: { label: 'Elo', spot: 3.24, installment: 3.24 }
+      master: { label: 'MasterCard', spot: 2.18, installment: 2.18 }, // Taxa única: 2.18%
+      visa: { label: 'Visa', spot: 2.18, installment: 2.18 },         // Taxa única: 2.18%
+      elo: { label: 'Elo', spot: 3.24, installment: 3.24 }            // Taxa única: 3.24%
     }
   },
   MERCADO_PAGO: {
     label: 'Mercado Pago',
     methods: ['DEBIT', 'PIX'],
-    debit: 0.99,
-    pix: 0.49
+    debit: 0.99, // 0.99%
+    pix: 0.49    // 0.49%
   }
 };
 

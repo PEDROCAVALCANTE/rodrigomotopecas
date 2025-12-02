@@ -55,7 +55,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setEmployeeId('');
       // Set default category based on type
       if (defaultType === TransactionType.INCOME) {
-          setCategory(INCOME_SOURCES[0]);
+          setCategory(''); // Start empty to encourage selection
       } else {
           setCategory(CATEGORIES[0]);
       }
@@ -169,25 +169,29 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const calc = getCalculatedValues();
   const currentProviderConfig = MACHINE_CONFIG[provider];
 
-  const baseInputClass = "w-full px-4 py-3 bg-[#333333] border-transparent focus:ring-2 focus:ring-moto-500 focus:bg-[#404040] text-white rounded-lg placeholder-gray-500 outline-none transition-all resize-none";
-  const labelClass = "block text-sm text-gray-600 mb-1.5 font-medium";
+  const baseInputClass = "w-full px-4 py-3 bg-[#333] border border-gray-700 focus:ring-2 focus:ring-moto-500 focus:border-moto-500 text-white rounded-lg placeholder-gray-500 outline-none transition-all resize-none";
+  const labelClass = "block text-sm text-gray-400 mb-1.5 font-bold uppercase tracking-wide";
 
   // Determine which categories to show
   const currentCategories = type === TransactionType.INCOME ? INCOME_SOURCES : CATEGORIES;
 
+  // Determine if Type dropdown should be disabled/restricted (Only Income)
+  const isIncomeMode = defaultType === TransactionType.INCOME;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center p-6 pb-2">
-          <h2 className="text-xl font-bold text-gray-900">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm p-4">
+      {/* Modal Container DARK MODE */}
+      <div className="bg-[#1e1e1e] border border-gray-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center p-6 pb-4 border-b border-gray-800">
+          <h2 className="text-xl font-bold text-white">
             {initialData ? 'Editar Lançamento' : 'Novo Lançamento'}
           </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-100 rounded-full transition-colors">
+          <button onClick={onClose} className="text-gray-500 hover:text-white p-1 hover:bg-white/10 rounded-full transition-colors">
             <X size={24} />
           </button>
         </div>
         
-        <form onSubmit={handleSubmit} className="p-6 pt-2 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
           {/* Tipo de Movimento */}
           <div>
@@ -196,11 +200,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               value={type} 
               onChange={(e) => setType(e.target.value as TransactionType)}
               className={baseInputClass}
-              disabled={!!initialData}
+              disabled={!!initialData || isIncomeMode} // Lock if Income Mode
             >
               <option value={TransactionType.INCOME}>Receita (Entrada)</option>
-              <option value={TransactionType.EXPENSE_SHOP}>Despesa da Loja</option>
-              <option value={TransactionType.EXPENSE_EMPLOYEE}>Despesa Funcionário</option>
+              {/* Only show Expense options if we are NOT in strict Income Mode */}
+              {!isIncomeMode && (
+                <>
+                  <option value={TransactionType.EXPENSE_SHOP}>Despesa da Loja</option>
+                  <option value={TransactionType.EXPENSE_EMPLOYEE}>Despesa Funcionário</option>
+                </>
+              )}
             </select>
           </div>
 
@@ -247,7 +256,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   }}
                   required
                   placeholder="0.00"
-                  className={`${baseInputClass} text-xl font-bold placeholder-gray-600 ${amountError ? '!border-2 !border-red-500 focus:!ring-red-500 !bg-red-900/10' : ''}`}
+                  className={`${baseInputClass} text-xl font-bold placeholder-gray-600 ${amountError ? '!border-red-500 focus:!ring-red-500 !bg-red-900/10' : ''}`}
                 />
                 {amountError && (
                   <div className="absolute right-3 top-3 text-red-500 animate-pulse">
@@ -263,11 +272,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* CALCULADORA DE TAXAS (STONE/REDE/MP) - Apenas para Receita */}
           {type === TransactionType.INCOME && !initialData && amount && parseFloat(amount) > 0 && !amountError && (
-            <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div className="bg-[#111] p-4 rounded-xl border border-gray-700">
               <button 
                 type="button" 
                 onClick={() => setShowCalculator(!showCalculator)}
-                className="flex items-center gap-2 text-sm font-bold text-moto-600 w-full hover:underline"
+                className="flex items-center gap-2 text-sm font-bold text-moto-500 w-full hover:underline"
               >
                 <Calculator size={16} />
                 {showCalculator ? 'Ocultar Calculadora' : 'Calcular Taxas (Maquininha)'}
@@ -278,7 +287,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   
                   {/* SELETOR DE PROVEDOR (MAQUININHA) */}
                   <div>
-                    <label className="text-xs font-bold text-gray-500 mb-2 block uppercase">Selecione a Maquininha:</label>
+                    <label className="text-xs font-bold text-gray-400 mb-2 block uppercase">Selecione a Maquininha:</label>
                     <div className="grid grid-cols-3 gap-2">
                       {(Object.keys(MACHINE_CONFIG) as Array<keyof typeof MACHINE_CONFIG>).map((key) => (
                         <button
@@ -287,8 +296,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           onClick={() => setProvider(key)}
                           className={`py-2 text-xs font-bold rounded-lg border transition-all
                             ${provider === key 
-                              ? 'bg-gray-800 text-white border-gray-800 shadow-md' 
-                              : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-100'}`}
+                              ? 'bg-gray-700 text-white border-gray-600 shadow-md' 
+                              : 'bg-[#222] text-gray-500 border-gray-700 hover:bg-[#333] hover:text-white'}`}
                         >
                           {MACHINE_CONFIG[key].label}
                         </button>
@@ -297,12 +306,12 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                   </div>
 
                   {/* Selector de Método (Baseado no Provedor) */}
-                  <div className="flex bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
+                  <div className="flex bg-[#222] rounded-lg p-1 border border-gray-700 shadow-sm">
                     {currentProviderConfig.methods.includes('PIX') && (
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('PIX')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'PIX' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'PIX' ? 'bg-moto-600 text-white' : 'text-gray-500 hover:text-white'}`}
                       >
                         <Smartphone size={14} /> Pix
                       </button>
@@ -311,7 +320,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('DEBIT')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'DEBIT' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'DEBIT' ? 'bg-moto-600 text-white' : 'text-gray-500 hover:text-white'}`}
                       >
                         <Banknote size={14} /> Débito
                       </button>
@@ -320,7 +329,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       <button
                         type="button"
                         onClick={() => setPaymentMethod('CREDIT')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'CREDIT' ? 'bg-moto-100 text-moto-700' : 'text-gray-500 hover:text-gray-800'}`}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'CREDIT' ? 'bg-moto-600 text-white' : 'text-gray-500 hover:text-white'}`}
                       >
                         <CreditCard size={14} /> Crédito
                       </button>
@@ -329,10 +338,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                   {/* Opções de Crédito */}
                   {paymentMethod === 'CREDIT' && (
-                    <div className="space-y-3 p-3 bg-white rounded-lg border border-gray-100">
+                    <div className="space-y-3 p-3 bg-[#222] rounded-lg border border-gray-700">
                        {/* Bandeiras Dinâmicas */}
                        <div>
-                         <label className="text-xs font-bold text-gray-500 mb-2 block">Bandeira:</label>
+                         <label className="text-xs font-bold text-gray-400 mb-2 block">Bandeira:</label>
                          <div className="flex flex-wrap gap-2">
                            {/* @ts-ignore */}
                            {(Object.keys(currentProviderConfig.credit) as string[]).map((key) => {
@@ -346,7 +355,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                                   className={`px-2 py-1 rounded border text-xs font-semibold transition-colors
                                     ${selectedBrand === key 
                                       ? 'bg-moto-600 text-white border-moto-600' 
-                                      : 'bg-gray-50 text-gray-600 border-gray-200 hover:border-moto-400'}`}
+                                      : 'bg-[#333] text-gray-500 border-gray-600 hover:border-moto-500'}`}
                                 >
                                   {brand.label}
                                 </button>
@@ -357,25 +366,25 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
                        {/* Modalidade */}
                        <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="flex items-center gap-2 cursor-pointer group">
                              <input 
                                type="radio" 
                                name="installmentMode"
                                checked={!isInstallmentMode}
                                onChange={() => setIsInstallmentMode(false)}
-                               className="text-moto-600 focus:ring-moto-500"
+                               className="text-moto-600 focus:ring-moto-500 bg-gray-700 border-gray-600"
                              />
-                             <span className="text-xs text-gray-700">Sem Juros (À Vista)</span>
+                             <span className="text-xs text-gray-400 group-hover:text-white">Sem Juros (À Vista)</span>
                           </label>
-                          <label className="flex items-center gap-2 cursor-pointer">
+                          <label className="flex items-center gap-2 cursor-pointer group">
                              <input 
                                type="radio" 
                                name="installmentMode"
                                checked={isInstallmentMode}
                                onChange={() => setIsInstallmentMode(true)}
-                               className="text-moto-600 focus:ring-moto-500"
+                               className="text-moto-600 focus:ring-moto-500 bg-gray-700 border-gray-600"
                              />
-                             <span className="text-xs text-gray-700">Com Juros</span>
+                             <span className="text-xs text-gray-400 group-hover:text-white">Com Juros</span>
                           </label>
                        </div>
                     </div>
@@ -388,39 +397,39 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                       id="antecipation" 
                       checked={useAntecipation} 
                       onChange={(e) => setUseAntecipation(e.target.checked)}
-                      className="rounded text-moto-600 focus:ring-moto-500 w-4 h-4"
+                      className="rounded text-moto-600 focus:ring-moto-500 w-4 h-4 bg-gray-700 border-gray-600"
                      />
-                     <label htmlFor="antecipation" className="text-xs font-medium text-gray-600 cursor-pointer">
+                     <label htmlFor="antecipation" className="text-xs font-medium text-gray-400 cursor-pointer hover:text-white">
                        Antecipação Automática (+{ANTECIPATION_RATE}%)
                      </label>
                   </div>
 
                   {/* Resumo de Valores */}
-                  <div className="bg-white p-3 rounded border border-gray-200 text-xs space-y-1 shadow-sm">
-                    <div className="flex justify-between text-gray-500">
+                  <div className="bg-[#222] p-3 rounded border border-gray-700 text-xs space-y-1 shadow-sm">
+                    <div className="flex justify-between text-gray-400">
                       <span>Valor Bruto:</span>
                       <span>R$ {calc.rawAmount.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-red-500 font-medium">
+                    <div className="flex justify-between text-red-400 font-medium">
                       <span>Taxa {calc.label} ({calc.rate.toFixed(2)}%):</span>
                       <span>- R$ {calc.feeAmount.toFixed(2)}</span>
                     </div>
                     {useAntecipation && (
-                       <div className="flex justify-between text-red-500 font-medium">
+                       <div className="flex justify-between text-red-400 font-medium">
                         <span>Antecipação ({ANTECIPATION_RATE}%):</span>
                         <span>- R$ {calc.antecipationFee.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between font-bold text-gray-800 border-t pt-2 mt-2">
+                    <div className="flex justify-between font-bold text-gray-200 border-t border-gray-700 pt-2 mt-2">
                       <span>Líquido a receber:</span>
-                      <span className="text-green-600 text-sm">R$ {calc.net.toFixed(2)}</span>
+                      <span className="text-green-500 text-sm">R$ {calc.net.toFixed(2)}</span>
                     </div>
                   </div>
 
                   <button
                     type="button"
                     onClick={applyNetValue}
-                    className="w-full flex items-center justify-center gap-2 bg-green-100 text-green-700 py-3 rounded-lg hover:bg-green-200 font-bold text-xs transition-colors shadow-sm"
+                    className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-500 font-bold text-xs transition-colors shadow-sm"
                   >
                     <Check size={16} />
                     Aplicar Valor Líquido
@@ -440,7 +449,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className={baseInputClass}
-              placeholder={type === TransactionType.INCOME ? "Ex: Rede, Stone, Pix..." : "Selecione ou digite..."}
+              placeholder={type === TransactionType.INCOME ? "Selecione a maquininha..." : "Selecione ou digite..."}
             />
             <datalist id="categories">
               {currentCategories.map(c => <option key={c} value={c} />)}
@@ -462,7 +471,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           <button 
             type="submit" 
-            className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-3.5 px-4 rounded-lg transition-colors mt-2 shadow-lg shadow-moto-600/20 active:scale-[0.98]"
+            className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-3.5 px-4 rounded-lg transition-colors mt-2 shadow-lg shadow-moto-900/40 active:scale-[0.98]"
           >
             {initialData ? 'Atualizar Lançamento' : 'Salvar Lançamento'}
           </button>
