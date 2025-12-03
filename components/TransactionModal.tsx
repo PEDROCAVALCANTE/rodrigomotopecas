@@ -58,7 +58,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       // Determine initial type based on defaultType context
       if (defaultType === TransactionType.INCOME) {
         setType(TransactionType.INCOME);
-        setCategory('');
+        setCategory(INCOME_SOURCES[0]); // Default to first income source
       } else if (defaultType === TransactionType.EXPENSE_EMPLOYEE) {
         setType(TransactionType.EXPENSE_EMPLOYEE);
         setCategory(CATEGORIES[0]);
@@ -445,19 +445,17 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                {type === TransactionType.INCOME ? 'Origem / Método' : 'Categoria'}
             </label>
             <div className="relative">
-              <input 
-                list="category-options"
+              <select
                 className={baseInputClass}
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                placeholder={type === TransactionType.INCOME ? "Ex: Rede, Stone, Pix" : "Ex: Peças, Aluguel"}
                 required
-              />
-              <datalist id="category-options">
+              >
+                {/* Remove placeholder, default value logic handles initial selection */}
                 {currentCategories.map((cat, index) => (
-                  <option key={index} value={cat} />
+                  <option key={index} value={cat}>{cat}</option>
                 ))}
-              </datalist>
+              </select>
             </div>
           </div>
 
