@@ -40,6 +40,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [isInstallmentMode, setIsInstallmentMode] = useState(false); // false = Sem juros (spot), true = Com juros
   const [useAntecipation, setUseAntecipation] = useState(false);
 
+  // Determine modes to lock selector
+  const isIncomeMode = defaultType === TransactionType.INCOME;
+  const isShopExpenseMode = defaultType === TransactionType.EXPENSE_SHOP;
+  const isEmployeeExpenseMode = defaultType === TransactionType.EXPENSE_EMPLOYEE;
+
   // Load initial data
   useEffect(() => {
     if (isOpen && initialData) {
@@ -205,9 +210,6 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // Determine which categories to show
   const currentCategories = type === TransactionType.INCOME ? INCOME_SOURCES : CATEGORIES;
 
-  // Determine if Type dropdown should be disabled/restricted (Only Income)
-  const isIncomeMode = defaultType === TransactionType.INCOME;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm p-4">
       {/* Modal Container DARK MODE */}
@@ -223,17 +225,21 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
         
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           
-          {/* Tipo de Movimento - RESTRICTED IF INCOME MODE */}
+          {/* Tipo de Movimento - RESTRICTED IF MODE IS SET */}
           <div>
             <label className={labelClass}>Tipo de Movimento</label>
             <select 
               value={type} 
               onChange={(e) => setType(e.target.value as TransactionType)}
               className={baseInputClass}
-              disabled={!!initialData || isIncomeMode} // Lock if Income Mode
+              disabled={!!initialData || isIncomeMode || isShopExpenseMode || isEmployeeExpenseMode} // Lock if any specific mode is active
             >
               {isIncomeMode ? (
                  <option value={TransactionType.INCOME}>Receita (Entrada)</option>
+              ) : isShopExpenseMode ? (
+                 <option value={TransactionType.EXPENSE_SHOP}>Despesa da Loja</option>
+              ) : isEmployeeExpenseMode ? (
+                 <option value={TransactionType.EXPENSE_EMPLOYEE}>Despesa Funcionário</option>
               ) : (
                 <>
                   <option value={TransactionType.INCOME}>Receita (Entrada)</option>
