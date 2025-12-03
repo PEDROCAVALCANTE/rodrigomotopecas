@@ -11,8 +11,6 @@ export const CATEGORIES = [
   'Comissão',
   'Gratificação',
   'Horas Extras',
-  'Serviço',
-  'Venda',
   'Outros',
 ];
 
