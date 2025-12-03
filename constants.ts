@@ -1,10 +1,11 @@
+
 import { Employee, Transaction, TransactionType, Client, Product, Service } from './types';
 
 export const CATEGORIES = [
-  'Peças',
+  'Peças/Acessorios',
+  'Agua/Energia/Luz/Internet',
   'Aluguel',
   'Ferramentas',
-  'Luz/Água',
   'Salário',
   'Adiantamento',
   'Comissão',
@@ -15,13 +16,22 @@ export const CATEGORIES = [
   'Outros',
 ];
 
-// Opções específicas para Receitas/Caixa - Atualizado conforme solicitação
+// Opções específicas para Receitas/Caixa
 export const INCOME_SOURCES = [
   'Rede',
   'Stone',
   'Mercado Pago',
   'Pix',
   'Dinheiro'
+];
+
+// Opções de Pagamento para Despesas (Comum/Fixa)
+export const EXPENSE_PAYMENT_METHODS = [
+  'Dinheiro',
+  'Pix',
+  'Boleto',
+  'Cartão de Crédito',
+  'Cartão de Débito'
 ];
 
 // Configuração de Taxas por Maquininha
@@ -87,8 +97,8 @@ export const INITIAL_CLIENTS: Client[] = [
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
   { id: '1', date: '2023-10-01', description: 'Revisão Honda CB500', amount: 450, type: TransactionType.INCOME, category: 'Serviço' },
-  { id: '2', date: '2023-10-02', description: 'Aluguel Oficina', amount: 1200, type: TransactionType.EXPENSE_SHOP, category: 'Aluguel' },
-  { id: '3', date: '2023-10-05', description: 'Compra de Óleo', amount: 300, type: TransactionType.EXPENSE_SHOP, category: 'Peças' },
+  { id: '2', date: '2023-10-02', description: 'Aluguel Oficina', amount: 1200, type: TransactionType.EXPENSE_SHOP, category: 'Aluguel', paymentMethod: 'Boleto' },
+  { id: '3', date: '2023-10-05', description: 'Compra de Óleo', amount: 300, type: TransactionType.EXPENSE_SHOP, category: 'Peças/Acessorios', paymentMethod: 'Pix' },
   { id: '5', date: '2023-10-12', description: 'Comissão Mão de Obra', amount: 150, type: TransactionType.EXPENSE_EMPLOYEE, employeeId: '3', category: 'Comissão' },
 ];
 

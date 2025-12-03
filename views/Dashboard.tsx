@@ -16,8 +16,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, employees })
       .filter(t => t.type === TransactionType.INCOME)
       .reduce((acc, curr) => acc + curr.amount, 0);
     
+    // Calcula despesas da loja somando: EXPENSE_SHOP (legado), EXPENSE_COMMON e EXPENSE_FIXED
     const shopExpense = transactions
-      .filter(t => t.type === TransactionType.EXPENSE_SHOP)
+      .filter(t => 
+        t.type === TransactionType.EXPENSE_SHOP || 
+        t.type === TransactionType.EXPENSE_COMMON || 
+        t.type === TransactionType.EXPENSE_FIXED
+      )
       .reduce((acc, curr) => acc + curr.amount, 0);
 
     const empExpense = transactions
@@ -52,7 +57,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, employees })
   const categoryData = useMemo(() => {
     const catMap = new Map<string, number>();
     
-    // Add Transactions
+    // Add Transactions (all expenses)
     transactions.filter(t => t.type !== TransactionType.INCOME).forEach(t => {
       const cat = t.category || 'Outros';
       const current = catMap.get(cat) || 0;

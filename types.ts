@@ -1,6 +1,9 @@
+
 export enum TransactionType {
   INCOME = 'INCOME', // Receita
-  EXPENSE_SHOP = 'EXPENSE_SHOP', // Despesa Loja
+  EXPENSE_SHOP = 'EXPENSE_SHOP', // Legado (Manter para compatibilidade)
+  EXPENSE_COMMON = 'EXPENSE_COMMON', // Despesa Comum (Nova)
+  EXPENSE_FIXED = 'EXPENSE_FIXED',   // Despesa Fixa (Nova)
   EXPENSE_EMPLOYEE = 'EXPENSE_EMPLOYEE', // Despesa Funcionário
 }
 
@@ -34,6 +37,7 @@ export interface Transaction {
   type: TransactionType;
   employeeId?: string; // Only if type is EXPENSE_EMPLOYEE
   category?: string; // e.g., 'Parts', 'Rent', 'Advance', 'Salary'
+  paymentMethod?: string; // Novo campo: Forma de Pagamento (Pix, Boleto, etc)
 }
 
 // Novos Tipos para Estoque e Serviços

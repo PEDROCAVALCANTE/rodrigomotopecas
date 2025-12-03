@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { TransactionType, Employee, Transaction } from '../types';
-import { CATEGORIES, INCOME_SOURCES, MACHINE_CONFIG, ANTECIPATION_RATE } from '../constants';
+import { CATEGORIES, INCOME_SOURCES, MACHINE_CONFIG, ANTECIPATION_RATE, EXPENSE_PAYMENT_METHODS } from '../constants';
 import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote, Landmark } from 'lucide-react';
 
 interface TransactionModalProps {
@@ -23,15 +24,16 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  const [type, setType] = useState<TransactionType>(defaultType || TransactionType.EXPENSE_SHOP);
+  const [type, setType] = useState<TransactionType>(defaultType || TransactionType.EXPENSE_COMMON);
   const [employeeId, setEmployeeId] = useState('');
   const [category, setCategory] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState(''); // Estado para Forma de Pagamento (Despesa)
   const [amountError, setAmountError] = useState<string | null>(null);
 
   // --- Calculator States ---
   const [showCalculator, setShowCalculator] = useState(false);
   const [provider, setProvider] = useState<keyof typeof MACHINE_CONFIG>('REDE');
-  const [paymentMethod, setPaymentMethod] = useState<'PIX' | 'DEBIT' | 'CREDIT'>('CREDIT');
+  const [calcPaymentMethod, setCalcPaymentMethod] = useState<'PIX' | 'DEBIT' | 'CREDIT'>('CREDIT');
   const [selectedBrand, setSelectedBrand] = useState<string>('visa');
   const [isInstallmentMode, setIsInstallmentMode] = useState(false); // false = Sem juros (spot), true = Com juros
   const [useAntecipation, setUseAntecipation] = useState(false);
@@ -45,26 +47,35 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setType(initialData.type);
       setEmployeeId(initialData.employeeId || '');
       setCategory(initialData.category || '');
+      setPaymentMethod(initialData.paymentMethod || '');
       setShowCalculator(false);
       setAmountError(null);
     } else if (isOpen) {
       setDescription('');
       setAmount('');
       setDate(new Date().toISOString().split('T')[0]);
-      setType(defaultType || TransactionType.EXPENSE_SHOP);
-      setEmployeeId('');
-      // Set default category based on type
+      
+      // Determine initial type based on defaultType context
       if (defaultType === TransactionType.INCOME) {
-          setCategory(''); // Start empty to encourage selection
+        setType(TransactionType.INCOME);
+        setCategory('');
+      } else if (defaultType === TransactionType.EXPENSE_EMPLOYEE) {
+        setType(TransactionType.EXPENSE_EMPLOYEE);
+        setCategory(CATEGORIES[0]);
       } else {
-          setCategory(CATEGORIES[0]);
+        // Default to Common Expense for shop
+        setType(TransactionType.EXPENSE_COMMON);
+        setCategory(CATEGORIES[0]);
       }
+
+      setEmployeeId('');
+      setPaymentMethod('Dinheiro'); // Default
       setShowCalculator(false);
       setAmountError(null);
       
       // Reset Calc
       setProvider('REDE');
-      setPaymentMethod('CREDIT');
+      setCalcPaymentMethod('CREDIT');
     }
   }, [isOpen, initialData, defaultType]);
 
@@ -72,11 +83,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   useEffect(() => {
     const config = MACHINE_CONFIG[provider];
     if (config.methods.includes('CREDIT')) {
-      setPaymentMethod('CREDIT');
+      setCalcPaymentMethod('CREDIT');
     } else if (config.methods.includes('DEBIT')) {
-      setPaymentMethod('DEBIT');
+      setCalcPaymentMethod('DEBIT');
     } else if (config.methods.includes('PIX')) {
-      setPaymentMethod('PIX');
+      setCalcPaymentMethod('PIX');
     }
   }, [provider]);
 
@@ -106,6 +117,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       category,
     };
 
+    // Adiciona método de pagamento se for despesa da loja
+    if (type !== TransactionType.INCOME && type !== TransactionType.EXPENSE_EMPLOYEE) {
+        transactionData.paymentMethod = paymentMethod;
+    }
+
     if (type === TransactionType.EXPENSE_EMPLOYEE) {
       if (employeeId) {
          transactionData.employeeId = employeeId;
@@ -128,15 +144,15 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
     
     const config = MACHINE_CONFIG[provider];
 
-    if (paymentMethod === 'PIX') {
+    if (calcPaymentMethod === 'PIX') {
       // @ts-ignore
       rate = config.pix || 0;
       label = `Pix (${config.label})`;
-    } else if (paymentMethod === 'DEBIT') {
+    } else if (calcPaymentMethod === 'DEBIT') {
       // @ts-ignore
       rate = config.debit || 0;
       label = `Débito (${config.label})`;
-    } else if (paymentMethod === 'CREDIT') {
+    } else if (calcPaymentMethod === 'CREDIT') {
       // @ts-ignore
       const brandData = config.credit[selectedBrand];
       if (brandData) {
@@ -175,8 +191,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   // Determine which categories to show
   const currentCategories = type === TransactionType.INCOME ? INCOME_SOURCES : CATEGORIES;
 
-  // Determine if Type dropdown should be disabled/restricted (Only Income)
+  // Determine Modes
   const isIncomeMode = defaultType === TransactionType.INCOME;
+  const isEmployeeMode = defaultType === TransactionType.EXPENSE_EMPLOYEE;
+  // If not income and not employee, we assume Shop Mode (Common/Fixed)
+  const isShopExpenseMode = !isIncomeMode && !isEmployeeMode;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80 backdrop-blur-sm p-4">
@@ -200,30 +219,219 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               value={type} 
               onChange={(e) => setType(e.target.value as TransactionType)}
               className={baseInputClass}
-              disabled={!!initialData || isIncomeMode} // Lock if Income Mode
+              disabled={!!initialData || isIncomeMode || isEmployeeMode} 
             >
-              <option value={TransactionType.INCOME}>Receita (Entrada)</option>
-              {/* Only show Expense options if we are NOT in strict Income Mode */}
-              {!isIncomeMode && (
-                <>
-                  <option value={TransactionType.EXPENSE_SHOP}>Despesa da Loja</option>
-                  <option value={TransactionType.EXPENSE_EMPLOYEE}>Despesa Funcionário</option>
-                </>
+              {isIncomeMode ? (
+                <option value={TransactionType.INCOME}>Receita (Entrada)</option>
+              ) : isEmployeeMode ? (
+                 <option value={TransactionType.EXPENSE_EMPLOYEE}>Despesa Funcionário</option>
+              ) : (
+                 <>
+                   <option value={TransactionType.EXPENSE_COMMON}>Despesas Comum</option>
+                   <option value={TransactionType.EXPENSE_FIXED}>Despesas Fixas</option>
+                 </>
               )}
             </select>
           </div>
 
-          {/* Seleção de Funcionário */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className={labelClass}>Data</label>
+              <input 
+                type="date"
+                className={baseInputClass}
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <label className={labelClass}>Valor (R$)</label>
+              <input 
+                type="number"
+                step="0.01"
+                className={`${baseInputClass} text-xl font-bold ${amountError ? '!border-red-500 !bg-red-900/10' : ''}`}
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value);
+                  if (amountError) setAmountError(null);
+                }}
+                required
+              />
+            </div>
+          </div>
+          
+          {/* Seletor de Forma de Pagamento (Apenas para Despesas da Loja) */}
+          {isShopExpenseMode && (
+             <div>
+                <label className={labelClass}>Forma de Pagamento</label>
+                <div className="flex flex-wrap gap-2">
+                   {EXPENSE_PAYMENT_METHODS.map(method => (
+                      <button
+                         type="button"
+                         key={method}
+                         onClick={() => setPaymentMethod(method)}
+                         className={`px-3 py-2 rounded-lg text-xs font-bold border transition-all flex-1
+                            ${paymentMethod === method 
+                               ? 'bg-moto-600 text-white border-moto-500' 
+                               : 'bg-[#222] text-gray-400 border-gray-700 hover:bg-[#333]'
+                            }`}
+                      >
+                         {method}
+                      </button>
+                   ))}
+                </div>
+             </div>
+          )}
+          
+          {amountError && (
+             <div className="flex items-center gap-2 text-red-500 text-sm animate-fade-in">
+                <AlertCircle size={16} />
+                {amountError}
+             </div>
+          )}
+          
+          {/* Calculadora de Taxas Button (Only Income) */}
+          {type === TransactionType.INCOME && !showCalculator && (
+             <button 
+               type="button" 
+               onClick={() => setShowCalculator(true)}
+               className="w-full py-2 bg-[#333] hover:bg-[#444] text-gray-300 rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-colors border border-gray-700"
+             >
+                <Calculator size={16} /> Calcular Taxa Maquininha
+             </button>
+          )}
+
+          {/* CALCULADORA PANEL */}
+          {showCalculator && (
+            <div className="bg-[#111] p-4 rounded-xl border border-gray-700 animate-fade-in">
+              <div className="flex justify-between items-center mb-3">
+                 <h3 className="text-white font-bold text-sm flex items-center gap-2"><CreditCard size={16}/> Calculadora de Taxas</h3>
+                 <button type="button" onClick={() => setShowCalculator(false)} className="text-gray-500 hover:text-white"><X size={16}/></button>
+              </div>
+              
+              <div className="space-y-3">
+                 {/* 1. Selecionar Maquininha */}
+                 <div className="grid grid-cols-3 gap-2">
+                    {(Object.keys(MACHINE_CONFIG) as Array<keyof typeof MACHINE_CONFIG>).map((key) => (
+                       <button
+                          key={key}
+                          type="button"
+                          onClick={() => setProvider(key)}
+                          className={`p-2 rounded-lg text-xs font-bold transition-all border ${provider === key ? 'bg-moto-600 text-white border-moto-500' : 'bg-[#222] text-gray-400 border-gray-700 hover:bg-[#333]'}`}
+                       >
+                          {MACHINE_CONFIG[key].label}
+                       </button>
+                    ))}
+                 </div>
+
+                 {/* 2. Selecionar Método (Dinâmico baseado na maquininha) */}
+                 <div className="flex gap-2 p-1 bg-[#222] rounded-lg border border-gray-700">
+                    {currentProviderConfig.methods.includes('PIX') && (
+                       <button type="button" onClick={() => setCalcPaymentMethod('PIX')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'PIX' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500'}`}>Pix</button>
+                    )}
+                    {currentProviderConfig.methods.includes('DEBIT') && (
+                       <button type="button" onClick={() => setCalcPaymentMethod('DEBIT')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'DEBIT' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500'}`}>Débito</button>
+                    )}
+                    {currentProviderConfig.methods.includes('CREDIT') && (
+                       <button type="button" onClick={() => setCalcPaymentMethod('CREDIT')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'CREDIT' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-500'}`}>Crédito</button>
+                    )}
+                 </div>
+
+                 {/* Opções de Crédito */}
+                 {calcPaymentMethod === 'CREDIT' && (
+                    <div className="space-y-3 pt-2 border-t border-gray-800">
+                       <div className="flex gap-2">
+                          {Object.entries(currentProviderConfig.credit).map(([key, val]) => (
+                             <button 
+                                key={key} 
+                                type="button" 
+                                onClick={() => setSelectedBrand(key)}
+                                className={`flex-1 py-1 px-2 rounded border text-xs font-bold uppercase ${selectedBrand === key ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-gray-700'}`}
+                             >
+                                {/* @ts-ignore */}
+                                {val.label}
+                             </button>
+                          ))}
+                       </div>
+                       
+                       {/* Seletor Juros (Apenas Rede tem essa distinção clara no pedido, mas Stone tem taxa única) */}
+                       {provider === 'REDE' && (
+                          <div className="flex gap-2">
+                              <button 
+                                type="button" 
+                                onClick={() => setIsInstallmentMode(false)}
+                                className={`flex-1 py-1.5 rounded text-xs font-bold border transition-all ${!isInstallmentMode ? 'bg-green-500/20 text-green-500 border-green-500/50' : 'bg-transparent text-gray-500 border-gray-700'}`}
+                              >
+                                 À Vista / Sem Juros
+                              </button>
+                              <button 
+                                type="button" 
+                                onClick={() => setIsInstallmentMode(true)}
+                                className={`flex-1 py-1.5 rounded text-xs font-bold border transition-all ${isInstallmentMode ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-transparent text-gray-500 border-gray-700'}`}
+                              >
+                                 Parcelado / Com Juros
+                              </button>
+                          </div>
+                       )}
+                    </div>
+                 )}
+
+                 <div className="flex items-center gap-2 mt-2">
+                    <input 
+                      type="checkbox" 
+                      id="antecipation" 
+                      checked={useAntecipation} 
+                      onChange={e => setUseAntecipation(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-600 bg-[#333] text-moto-600 focus:ring-moto-600"
+                    />
+                    <label htmlFor="antecipation" className="text-xs text-gray-400">Aplicar antecipação automática ({ANTECIPATION_RATE}%)</label>
+                 </div>
+
+                 <div className="bg-[#222] p-3 rounded-lg border border-gray-700 mt-2">
+                    <div className="flex justify-between text-xs mb-1">
+                       <span className="text-gray-400">Valor Bruto:</span>
+                       <span className="text-white">R$ {calc.rawAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-xs mb-1 text-red-400">
+                       <span>Taxa Maquininha ({calc.rate}%):</span>
+                       <span>- R$ {calc.feeAmount.toFixed(2)}</span>
+                    </div>
+                    {useAntecipation && (
+                       <div className="flex justify-between text-xs mb-1 text-red-400">
+                          <span>Antecipação ({ANTECIPATION_RATE}%):</span>
+                          <span>- R$ {calc.antecipationFee.toFixed(2)}</span>
+                       </div>
+                    )}
+                    <div className="border-t border-gray-600 my-1 pt-1 flex justify-between font-bold text-sm">
+                       <span className="text-green-500">Líquido a Receber:</span>
+                       <span className="text-green-500">R$ {calc.net.toFixed(2)}</span>
+                    </div>
+                 </div>
+                 
+                 <button 
+                   type="button" 
+                   onClick={applyNetValue}
+                   className="w-full bg-moto-600 hover:bg-moto-700 text-white py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+                 >
+                    <Check size={16} /> Aplicar Valor Líquido
+                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Seleção de Funcionário (Apenas Despesa Func.) */}
           {type === TransactionType.EXPENSE_EMPLOYEE && (
-            <div className="animate-fade-in">
+            <div>
               <label className={labelClass}>Funcionário</label>
               <select 
-                value={employeeId} 
+                className={baseInputClass}
+                value={employeeId}
                 onChange={(e) => setEmployeeId(e.target.value)}
                 required
-                className={baseInputClass}
               >
-                <option value="">Selecione um funcionário...</option>
+                <option value="">Selecione o funcionário...</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>{emp.name}</option>
                 ))}
@@ -231,249 +439,45 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             </div>
           )}
 
-          {/* Data e Valor */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={labelClass}>Data</label>
-              <input 
-                type="date" 
-                value={date} 
-                onChange={(e) => setDate(e.target.value)}
-                required
-                className={baseInputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Valor (R$)</label>
-              <div className="relative">
-                <input 
-                  type="number" 
-                  step="0.01"
-                  value={amount} 
-                  onChange={(e) => {
-                    setAmount(e.target.value);
-                    if (amountError) setAmountError(null);
-                  }}
-                  required
-                  placeholder="0.00"
-                  className={`${baseInputClass} text-xl font-bold placeholder-gray-600 ${amountError ? '!border-red-500 focus:!ring-red-500 !bg-red-900/10' : ''}`}
-                />
-                {amountError && (
-                  <div className="absolute right-3 top-3 text-red-500 animate-pulse">
-                    <AlertCircle size={24} />
-                  </div>
-                )}
-              </div>
-              {amountError && (
-                <p className="text-red-500 text-xs mt-1 font-semibold">{amountError}</p>
-              )}
-            </div>
-          </div>
-
-          {/* CALCULADORA DE TAXAS (STONE/REDE/MP) - Apenas para Receita */}
-          {type === TransactionType.INCOME && !initialData && amount && parseFloat(amount) > 0 && !amountError && (
-            <div className="bg-[#111] p-4 rounded-xl border border-gray-700">
-              <button 
-                type="button" 
-                onClick={() => setShowCalculator(!showCalculator)}
-                className="flex items-center gap-2 text-sm font-bold text-moto-500 w-full hover:underline"
-              >
-                <Calculator size={16} />
-                {showCalculator ? 'Ocultar Calculadora' : 'Calcular Taxas (Maquininha)'}
-              </button>
-
-              {showCalculator && (
-                <div className="mt-4 space-y-4 animate-fade-in">
-                  
-                  {/* SELETOR DE PROVEDOR (MAQUININHA) */}
-                  <div>
-                    <label className="text-xs font-bold text-gray-400 mb-2 block uppercase">Selecione a Maquininha:</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {(Object.keys(MACHINE_CONFIG) as Array<keyof typeof MACHINE_CONFIG>).map((key) => (
-                        <button
-                          key={key}
-                          type="button"
-                          onClick={() => setProvider(key)}
-                          className={`py-2 text-xs font-bold rounded-lg border transition-all
-                            ${provider === key 
-                              ? 'bg-gray-700 text-white border-gray-600 shadow-md' 
-                              : 'bg-[#222] text-gray-500 border-gray-700 hover:bg-[#333] hover:text-white'}`}
-                        >
-                          {MACHINE_CONFIG[key].label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Selector de Método (Baseado no Provedor) */}
-                  <div className="flex bg-[#222] rounded-lg p-1 border border-gray-700 shadow-sm">
-                    {currentProviderConfig.methods.includes('PIX') && (
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('PIX')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'PIX' ? 'bg-moto-600 text-white' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        <Smartphone size={14} /> Pix
-                      </button>
-                    )}
-                    {currentProviderConfig.methods.includes('DEBIT') && (
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('DEBIT')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'DEBIT' ? 'bg-moto-600 text-white' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        <Banknote size={14} /> Débito
-                      </button>
-                    )}
-                    {currentProviderConfig.methods.includes('CREDIT') && (
-                      <button
-                        type="button"
-                        onClick={() => setPaymentMethod('CREDIT')}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-md flex items-center justify-center gap-1 transition-colors ${paymentMethod === 'CREDIT' ? 'bg-moto-600 text-white' : 'text-gray-500 hover:text-white'}`}
-                      >
-                        <CreditCard size={14} /> Crédito
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Opções de Crédito */}
-                  {paymentMethod === 'CREDIT' && (
-                    <div className="space-y-3 p-3 bg-[#222] rounded-lg border border-gray-700">
-                       {/* Bandeiras Dinâmicas */}
-                       <div>
-                         <label className="text-xs font-bold text-gray-400 mb-2 block">Bandeira:</label>
-                         <div className="flex flex-wrap gap-2">
-                           {/* @ts-ignore */}
-                           {(Object.keys(currentProviderConfig.credit) as string[]).map((key) => {
-                              // @ts-ignore
-                              const brand = currentProviderConfig.credit[key];
-                              return (
-                                <button
-                                  key={key}
-                                  type="button"
-                                  onClick={() => setSelectedBrand(key)}
-                                  className={`px-2 py-1 rounded border text-xs font-semibold transition-colors
-                                    ${selectedBrand === key 
-                                      ? 'bg-moto-600 text-white border-moto-600' 
-                                      : 'bg-[#333] text-gray-500 border-gray-600 hover:border-moto-500'}`}
-                                >
-                                  {brand.label}
-                                </button>
-                              )
-                           })}
-                         </div>
-                       </div>
-
-                       {/* Modalidade */}
-                       <div className="flex gap-4">
-                          <label className="flex items-center gap-2 cursor-pointer group">
-                             <input 
-                               type="radio" 
-                               name="installmentMode"
-                               checked={!isInstallmentMode}
-                               onChange={() => setIsInstallmentMode(false)}
-                               className="text-moto-600 focus:ring-moto-500 bg-gray-700 border-gray-600"
-                             />
-                             <span className="text-xs text-gray-400 group-hover:text-white">Sem Juros (À Vista)</span>
-                          </label>
-                          <label className="flex items-center gap-2 cursor-pointer group">
-                             <input 
-                               type="radio" 
-                               name="installmentMode"
-                               checked={isInstallmentMode}
-                               onChange={() => setIsInstallmentMode(true)}
-                               className="text-moto-600 focus:ring-moto-500 bg-gray-700 border-gray-600"
-                             />
-                             <span className="text-xs text-gray-400 group-hover:text-white">Com Juros</span>
-                          </label>
-                       </div>
-                    </div>
-                  )}
-
-                  {/* Antecipação Toggle */}
-                  <div className="flex items-center gap-2 mt-2">
-                     <input 
-                      type="checkbox" 
-                      id="antecipation" 
-                      checked={useAntecipation} 
-                      onChange={(e) => setUseAntecipation(e.target.checked)}
-                      className="rounded text-moto-600 focus:ring-moto-500 w-4 h-4 bg-gray-700 border-gray-600"
-                     />
-                     <label htmlFor="antecipation" className="text-xs font-medium text-gray-400 cursor-pointer hover:text-white">
-                       Antecipação Automática (+{ANTECIPATION_RATE}%)
-                     </label>
-                  </div>
-
-                  {/* Resumo de Valores */}
-                  <div className="bg-[#222] p-3 rounded border border-gray-700 text-xs space-y-1 shadow-sm">
-                    <div className="flex justify-between text-gray-400">
-                      <span>Valor Bruto:</span>
-                      <span>R$ {calc.rawAmount.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-red-400 font-medium">
-                      <span>Taxa {calc.label} ({calc.rate.toFixed(2)}%):</span>
-                      <span>- R$ {calc.feeAmount.toFixed(2)}</span>
-                    </div>
-                    {useAntecipation && (
-                       <div className="flex justify-between text-red-400 font-medium">
-                        <span>Antecipação ({ANTECIPATION_RATE}%):</span>
-                        <span>- R$ {calc.antecipationFee.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between font-bold text-gray-200 border-t border-gray-700 pt-2 mt-2">
-                      <span>Líquido a receber:</span>
-                      <span className="text-green-500 text-sm">R$ {calc.net.toFixed(2)}</span>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={applyNetValue}
-                    className="w-full flex items-center justify-center gap-2 bg-green-600 text-white py-3 rounded-lg hover:bg-green-500 font-bold text-xs transition-colors shadow-sm"
-                  >
-                    <Check size={16} />
-                    Aplicar Valor Líquido
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Categoria / Origem */}
+          {/* Seleção de Categoria */}
           <div>
             <label className={labelClass}>
-              {type === TransactionType.INCOME ? 'Origem / Método' : 'Categoria'}
+               {type === TransactionType.INCOME ? 'Origem / Método' : 'Categoria'}
             </label>
-            <input 
-              list="categories" 
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className={baseInputClass}
-              placeholder={type === TransactionType.INCOME ? "Selecione a maquininha..." : "Selecione ou digite..."}
-            />
-            <datalist id="categories">
-              {currentCategories.map(c => <option key={c} value={c} />)}
-            </datalist>
+            <div className="relative">
+              <input 
+                list="category-options"
+                className={baseInputClass}
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                placeholder={type === TransactionType.INCOME ? "Ex: Rede, Stone, Pix" : "Ex: Peças, Aluguel"}
+                required
+              />
+              <datalist id="category-options">
+                {currentCategories.map((cat, index) => (
+                  <option key={index} value={cat} />
+                ))}
+              </datalist>
+            </div>
           </div>
 
-          {/* Descrição */}
           <div>
             <label className={labelClass}>Descrição</label>
             <textarea 
-              value={description} 
-              onChange={(e) => setDescription(e.target.value)}
-              required
-              rows={3}
-              placeholder="Detalhes da transação..."
               className={baseInputClass}
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Detalhes da transação..."
+              required
             />
           </div>
-
+          
           <button 
             type="submit" 
-            className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-3.5 px-4 rounded-lg transition-colors mt-2 shadow-lg shadow-moto-900/40 active:scale-[0.98]"
+            className="w-full bg-moto-600 hover:bg-moto-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-moto-900/20 transition-all transform active:scale-[0.98] uppercase tracking-wide text-sm"
           >
-            {initialData ? 'Atualizar Lançamento' : 'Salvar Lançamento'}
+            Salvar Lançamento
           </button>
         </form>
       </div>

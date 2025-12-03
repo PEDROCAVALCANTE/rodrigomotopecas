@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Transaction, TransactionType, Employee } from '../types';
-import { Calendar, Search, Edit2, Trash2, Plus, TrendingDown, Receipt, Wallet } from 'lucide-react';
+import { Calendar, Search, Edit2, Trash2, Plus, TrendingDown, Receipt, Wallet, CreditCard } from 'lucide-react';
 
 interface FinancialsProps {
   transactions: Transaction[];
@@ -21,13 +22,22 @@ export const Financials: React.FC<FinancialsProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Se activeTab for definido (ex: SHOP), forçamos o filtro. Se for ALL, permitimos alternar (logica antiga removida para focar no pedido do usuário)
+  // Se activeTab for definido (ex: SHOP), forçamos o filtro. Se for ALL, permitimos alternar
   const filterType = activeTab; 
 
   const filteredTransactions = useMemo(() => {
     return transactions.filter(t => {
       // 1. Filter by specific type
-      if (filterType === 'SHOP' && t.type !== TransactionType.EXPENSE_SHOP) return false;
+      if (filterType === 'SHOP') {
+          // Shop includes: EXPENSE_SHOP (legacy), EXPENSE_COMMON, EXPENSE_FIXED
+          const isShopExpense = 
+            t.type === TransactionType.EXPENSE_SHOP || 
+            t.type === TransactionType.EXPENSE_COMMON || 
+            t.type === TransactionType.EXPENSE_FIXED;
+          
+          if (!isShopExpense) return false;
+      }
+
       if (filterType === 'EMPLOYEE' && t.type !== TransactionType.EXPENSE_EMPLOYEE) return false;
       
       // 2. Filter by search
@@ -53,6 +63,15 @@ export const Financials: React.FC<FinancialsProps> = ({
   const getEmployeeName = (id?: string) => {
     if (!id) return '-';
     return employees.find(e => e.id === id)?.name || 'Desconhecido';
+  };
+
+  const getTransactionTypeLabel = (type: TransactionType) => {
+    switch (type) {
+        case TransactionType.EXPENSE_COMMON: return 'Despesa Comum';
+        case TransactionType.EXPENSE_FIXED: return 'Despesa Fixa';
+        case TransactionType.EXPENSE_EMPLOYEE: return 'Funcionário';
+        default: return 'Despesa';
+    }
   };
 
   return (
@@ -124,7 +143,7 @@ export const Financials: React.FC<FinancialsProps> = ({
               <tr>
                 <th className="px-6 py-4 font-bold tracking-wider">Data</th>
                 <th className="px-6 py-4 font-bold tracking-wider">Descrição</th>
-                <th className="px-6 py-4 font-bold tracking-wider">Categoria</th>
+                <th className="px-6 py-4 font-bold tracking-wider">Tipo/Categoria</th>
                 {filterType !== 'SHOP' && <th className="px-6 py-4 font-bold tracking-wider">Funcionário</th>}
                 <th className="px-6 py-4 font-bold tracking-wider text-right">Valor</th>
                 <th className="px-6 py-4 font-bold tracking-wider text-center">Ações</th>
@@ -150,9 +169,19 @@ export const Financials: React.FC<FinancialsProps> = ({
                       {t.description}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
-                      <span className="px-2.5 py-1 bg-gray-800 text-gray-300 border border-gray-700 rounded-lg text-xs font-bold">
-                        {t.category || 'Geral'}
-                      </span>
+                      <div className="flex flex-col">
+                         <span className="text-xs text-gray-400 mb-0.5">{getTransactionTypeLabel(t.type)}</span>
+                         <span className="px-2.5 py-1 w-fit bg-gray-800 text-gray-300 border border-gray-700 rounded-lg text-xs font-bold">
+                           {t.category || 'Geral'}
+                         </span>
+                         {/* Exibe o método de pagamento se existir */}
+                         {t.paymentMethod && (
+                            <div className="flex items-center gap-1 mt-1 text-xs text-blue-400 font-medium">
+                               <CreditCard size={10} />
+                               {t.paymentMethod}
+                            </div>
+                         )}
+                      </div>
                     </td>
                     {filterType !== 'SHOP' && (
                       <td className="px-6 py-4 text-sm text-gray-500">
