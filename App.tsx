@@ -384,7 +384,14 @@ const App: React.FC = () => {
                   onUpdateBudget={updateBudget}
                   onDeleteBudget={deleteBudget}
               />}
-              {currentView === 'EXPENSES_SHOP' && <Financials transactions={transactions} employees={employees} activeTab="SHOP" onEditTransaction={openEditTransaction} onDeleteTransaction={deleteTransaction} />}
+              {currentView === 'EXPENSES_SHOP' && <Financials 
+                  transactions={transactions} 
+                  employees={employees} 
+                  activeTab="SHOP" 
+                  onEditTransaction={openEditTransaction} 
+                  onDeleteTransaction={deleteTransaction} 
+                  onOpenNewTransaction={openNewTransaction} 
+              />}
               {currentView === 'EXPENSES_EMP' && <EmployeeExpenses employees={employees} transactions={transactions} onUpdateEmployee={updateEmployee} onAddTransaction={addTransaction} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} />}
             </>
           )}

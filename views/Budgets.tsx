@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Budget, Client, Product, Service, BudgetItem } from '../types';
-import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Calendar, AlertCircle, Wrench, Package, Loader2, Check } from 'lucide-react';
+import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Calendar, AlertCircle, Wrench, Package, Loader2, Check, CreditCard } from 'lucide-react';
 
 interface BudgetsViewProps {
   budgets: Budget[];
@@ -31,57 +31,82 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
   // Form State
   const [newBudget, setNewBudget] = useState<{
     clientId: string;
+    plate: string;
     items: BudgetItem[];
     status: 'PENDING' | 'APPROVED' | 'COMPLETED';
     notes: string;
   }>({
     clientId: '',
+    plate: '',
     items: [],
     status: 'PENDING',
     notes: ''
   });
 
   // Item Selector State
-  const [selectedItemType, setSelectedItemType] = useState<'PRODUCT' | 'SERVICE'>('PRODUCT');
+  const [selectedItemType, setSelectedItemType] = useState<'PRODUCT' | 'SERVICE' | 'MANUAL'>('PRODUCT');
   const [selectedItemId, setSelectedItemId] = useState('');
   const [selectedItemQty, setSelectedItemQty] = useState(1);
+  
+  // Manual Item States
+  const [manualName, setManualName] = useState('');
+  const [manualPrice, setManualPrice] = useState('');
 
   // Helper to add item to budget list
   const addItemToBudget = () => {
-    if (!selectedItemId) return;
-
     let item: BudgetItem | null = null;
 
-    if (selectedItemType === 'PRODUCT') {
-      const prod = products.find(p => p.id === selectedItemId);
-      if (prod) {
+    if (selectedItemType === 'MANUAL') {
+        if (!manualName || !manualPrice) return;
+        const price = parseFloat(manualPrice);
+        if (isNaN(price) || price <= 0) return;
+
         item = {
-          type: 'PRODUCT',
-          id: prod.id,
-          name: prod.name,
-          quantity: selectedItemQty,
-          unitPrice: prod.sellPrice,
-          totalPrice: prod.sellPrice * selectedItemQty
+            type: 'SERVICE', // Default manual to service/generic
+            id: `MANUAL_${Date.now()}`,
+            name: manualName,
+            quantity: selectedItemQty,
+            unitPrice: price,
+            totalPrice: price * selectedItemQty
         };
-      }
-    } else {
-      const serv = services.find(s => s.id === selectedItemId);
-      if (serv) {
-        item = {
-          type: 'SERVICE',
-          id: serv.id,
-          name: serv.name,
-          quantity: 1, // Service usually 1
-          unitPrice: serv.price,
-          totalPrice: serv.price
-        };
-      }
+        
+        // Reset manual fields
+        setManualName('');
+        setManualPrice('');
+        setSelectedItemQty(1);
+
+    } else if (selectedItemId) {
+        if (selectedItemType === 'PRODUCT') {
+            const prod = products.find(p => p.id === selectedItemId);
+            if (prod) {
+                item = {
+                type: 'PRODUCT',
+                id: prod.id,
+                name: prod.name,
+                quantity: selectedItemQty,
+                unitPrice: prod.sellPrice,
+                totalPrice: prod.sellPrice * selectedItemQty
+                };
+            }
+        } else {
+            const serv = services.find(s => s.id === selectedItemId);
+            if (serv) {
+                item = {
+                type: 'SERVICE',
+                id: serv.id,
+                name: serv.name,
+                quantity: 1, // Service usually 1
+                unitPrice: serv.price,
+                totalPrice: serv.price
+                };
+            }
+        }
+        setSelectedItemId('');
+        setSelectedItemQty(1);
     }
 
     if (item) {
       setNewBudget(prev => ({ ...prev, items: [...prev.items, item!] }));
-      setSelectedItemId('');
-      setSelectedItemQty(1);
     }
   };
 
@@ -113,6 +138,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
       clientId: client.id,
       clientName: client.name,
       motorcycle: client.motorcycle,
+      plate: newBudget.plate.toUpperCase(), // Save plate uppercase
       date: new Date().toISOString().split('T')[0],
       status: newBudget.status,
       items: newBudget.items,
@@ -120,8 +146,8 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
       notes: newBudget.notes,
     };
 
-    // Only add warrantyDate if status is not PENDING
-    if (newBudget.status !== 'PENDING') {
+    // Only add warrantyDate if status is APPROVED or COMPLETED
+    if (newBudget.status === 'APPROVED' || newBudget.status === 'COMPLETED') {
        const d = new Date();
        d.setDate(d.getDate() + 90);
        budgetPayload.warrantyDate = d.toISOString().split('T')[0];
@@ -137,7 +163,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
         setTimeout(() => {
             setSaveSuccess(false);
             setShowForm(false);
-            setNewBudget({ clientId: '', items: [], status: 'PENDING', notes: '' });
+            setNewBudget({ clientId: '', plate: '', items: [], status: 'PENDING', notes: '' });
         }, 1500);
     }, 800);
   };
@@ -190,7 +216,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                   
                   <div class="info">
                       <strong>Cliente:</strong> ${b.clientName}<br>
-                      <strong>Moto:</strong> ${b.motorcycle}<br>
+                      <strong>Moto:</strong> ${b.motorcycle} <span style="margin-left: 20px;"><strong>Placa:</strong> ${b.plate || 'N/A'}</span><br>
                       <strong>Data:</strong> ${new Date(b.date).toLocaleDateString('pt-BR')}<br>
                       <strong>Status:</strong> ${b.status === 'PENDING' ? 'Pendente' : 'Aprovado'}
                   </div>
@@ -247,7 +273,8 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
   const filteredBudgets = useMemo(() => {
     return budgets.filter(b => 
         b.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        b.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
+        b.motorcycle.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (b.plate && b.plate.toLowerCase().includes(searchTerm.toLowerCase()))
     ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [budgets, searchTerm]);
 
@@ -301,6 +328,17 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                      ))}
                    </select>
                 </div>
+
+                <div>
+                   <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">Placa do Veículo</label>
+                   <input 
+                      type="text"
+                      className="w-full bg-[#111] border border-gray-700 text-white p-3 rounded-xl focus:ring-2 focus:ring-moto-500 outline-none uppercase placeholder-gray-600"
+                      value={newBudget.plate}
+                      onChange={e => setNewBudget({...newBudget, plate: e.target.value})}
+                      placeholder="ABC-1234"
+                   />
+                </div>
                 
                 <div>
                    <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase">Status Inicial</label>
@@ -340,46 +378,79 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
              {/* Right Column: Items Builder */}
              <div className="lg:col-span-2 space-y-4">
                 <div className="bg-[#111] p-4 rounded-xl border border-gray-700">
-                   <h3 className="text-sm font-bold text-gray-300 mb-3 uppercase tracking-wide">Adicionar Itens</h3>
-                   <div className="flex flex-col md:flex-row gap-3">
-                      <div className="flex bg-[#222] rounded-lg p-1 border border-gray-600">
-                         <button 
-                           type="button" 
-                           onClick={() => { setSelectedItemType('PRODUCT'); setSelectedItemId(''); }}
-                           className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${selectedItemType === 'PRODUCT' ? 'bg-moto-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                         >
-                            <Package size={14} /> Peça
-                         </button>
-                         <button 
-                           type="button" 
-                           onClick={() => { setSelectedItemType('SERVICE'); setSelectedItemId(''); }}
-                           className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${selectedItemType === 'SERVICE' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
-                         >
-                            <Wrench size={14} /> Serviço
-                         </button>
-                      </div>
-
-                      <select 
-                        className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
-                        value={selectedItemId}
-                        onChange={e => setSelectedItemId(e.target.value)}
+                   <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-sm font-bold text-gray-300 uppercase tracking-wide">Adicionar Itens</h3>
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedItemType(selectedItemType === 'MANUAL' ? 'PRODUCT' : 'MANUAL')}
+                        className="text-xs font-bold text-moto-500 hover:text-white transition-colors"
                       >
-                         <option value="">Selecione...</option>
-                         {selectedItemType === 'PRODUCT' 
-                           ? products.map(p => <option key={p.id} value={p.id}>{p.name} - R$ {p.sellPrice.toFixed(2)}</option>)
-                           : services.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>)
-                         }
-                      </select>
+                         {selectedItemType === 'MANUAL' ? 'Voltar para Lista' : 'Item Manual?'}
+                      </button>
+                   </div>
+                   
+                   <div className="flex flex-col md:flex-row gap-3">
+                      {selectedItemType !== 'MANUAL' ? (
+                          <>
+                            <div className="flex bg-[#222] rounded-lg p-1 border border-gray-600">
+                                <button 
+                                type="button" 
+                                onClick={() => { setSelectedItemType('PRODUCT'); setSelectedItemId(''); }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${selectedItemType === 'PRODUCT' ? 'bg-moto-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                                >
+                                    <Package size={14} /> Peça
+                                </button>
+                                <button 
+                                type="button" 
+                                onClick={() => { setSelectedItemType('SERVICE'); setSelectedItemId(''); }}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-1 transition-all ${selectedItemType === 'SERVICE' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'}`}
+                                >
+                                    <Wrench size={14} /> Serviço
+                                </button>
+                            </div>
 
-                      {selectedItemType === 'PRODUCT' && (
-                        <input 
-                          type="number" 
-                          min="1" 
-                          className="w-20 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm text-center"
-                          value={selectedItemQty}
-                          onChange={e => setSelectedItemQty(parseInt(e.target.value) || 1)}
-                        />
+                            <select 
+                                className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
+                                value={selectedItemId}
+                                onChange={e => setSelectedItemId(e.target.value)}
+                            >
+                                <option value="">Selecione...</option>
+                                {selectedItemType === 'PRODUCT' 
+                                ? products.map(p => <option key={p.id} value={p.id}>{p.name} - R$ {p.sellPrice.toFixed(2)}</option>)
+                                : services.map(s => <option key={s.id} value={s.id}>{s.name} - R$ {s.price.toFixed(2)}</option>)
+                                }
+                            </select>
+                          </>
+                      ) : (
+                          // Manual Input Mode
+                          <>
+                             <input 
+                               type="text"
+                               placeholder="Descrição do item manual..."
+                               className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
+                               value={manualName}
+                               onChange={e => setManualName(e.target.value)}
+                             />
+                             <input 
+                               type="number"
+                               step="0.01"
+                               placeholder="Valor R$"
+                               className="w-28 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
+                               value={manualPrice}
+                               onChange={e => setManualPrice(e.target.value)}
+                             />
+                          </>
                       )}
+
+                      {/* Quantity Input */}
+                      <input 
+                        type="number" 
+                        min="1" 
+                        className="w-16 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm text-center"
+                        value={selectedItemQty}
+                        onChange={e => setSelectedItemQty(parseInt(e.target.value) || 1)}
+                        placeholder="Qtd"
+                      />
 
                       <button 
                         type="button"
@@ -473,7 +544,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                 <Search className="absolute left-3 top-3 text-gray-500" size={20} />
                 <input 
                    className="w-full bg-[#111] border border-gray-700 text-white pl-10 pr-4 py-3 rounded-xl outline-none focus:ring-2 focus:ring-moto-500"
-                   placeholder="Buscar orçamento por cliente ou moto..."
+                   placeholder="Buscar orçamento por cliente, moto ou placa..."
                    value={searchTerm}
                    onChange={e => setSearchTerm(e.target.value)}
                 />
@@ -501,6 +572,11 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                       <div className="flex items-center gap-4 text-sm text-gray-400">
                          <div className="flex items-center gap-1.5"><Calendar size={14}/> {new Date(b.date).toLocaleDateString('pt-BR')}</div>
                          <div className="flex items-center gap-1.5"><Wrench size={14}/> {b.motorcycle}</div>
+                         {b.plate && (
+                             <div className="flex items-center gap-1.5 font-mono text-gray-300 bg-gray-800 px-1.5 rounded text-xs border border-gray-700">
+                                 <CreditCard size={12}/> {b.plate}
+                             </div>
+                         )}
                          <div className="flex items-center gap-1.5"><Package size={14}/> {b.items.length} itens</div>
                       </div>
 

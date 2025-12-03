@@ -68,6 +68,7 @@ export interface Budget {
   clientId: string;
   clientName: string;
   motorcycle: string;
+  plate?: string; // Placa do veículo
   date: string;
   status: 'PENDING' | 'APPROVED' | 'COMPLETED';
   items: BudgetItem[];
