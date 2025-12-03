@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TransactionType, Employee, Transaction } from '../types';
 import { CATEGORIES, INCOME_SOURCES, MACHINE_CONFIG, ANTECIPATION_RATE } from '../constants';
-import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote, Landmark } from 'lucide-react';
+import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote, Landmark, CalendarClock } from 'lucide-react';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -28,6 +28,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
   const [category, setCategory] = useState('');
   const [amountError, setAmountError] = useState<string | null>(null);
 
+  // --- Shop Expense Specific States ---
+  const [expenseMethod, setExpenseMethod] = useState<'PIX' | 'CREDIT' | 'INSTALLMENT'>('PIX');
+  const [expenseInstallments, setExpenseInstallments] = useState<string>('2');
+
   // --- Calculator States ---
   const [showCalculator, setShowCalculator] = useState(false);
   const [provider, setProvider] = useState<keyof typeof MACHINE_CONFIG>('REDE');
@@ -45,6 +49,13 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       setType(initialData.type);
       setEmployeeId(initialData.employeeId || '');
       setCategory(initialData.category || '');
+      
+      // Load Expense specific data
+      if (initialData.type === TransactionType.EXPENSE_SHOP) {
+        setExpenseMethod(initialData.paymentMethod || 'PIX');
+        setExpenseInstallments(initialData.installments ? initialData.installments.toString() : '2');
+      }
+
       setShowCalculator(false);
       setAmountError(null);
     } else if (isOpen) {
@@ -59,6 +70,11 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       } else {
           setCategory(CATEGORIES[0]);
       }
+      
+      // Reset Expense Defaults
+      setExpenseMethod('PIX');
+      setExpenseInstallments('2');
+
       setShowCalculator(false);
       setAmountError(null);
       
@@ -110,6 +126,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       if (employeeId) {
          transactionData.employeeId = employeeId;
       }
+    }
+
+    // Add Expense Specific Data
+    if (type === TransactionType.EXPENSE_SHOP) {
+        transactionData.paymentMethod = expenseMethod;
+        if (expenseMethod === 'INSTALLMENT') {
+            transactionData.installments = parseInt(expenseInstallments) || 2;
+        }
     }
 
     if (initialData) {
@@ -276,6 +300,50 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
               )}
             </div>
           </div>
+
+          {/* CAMPOS ESPECÍFICOS PARA DESPESA DA LOJA (Forma de Pagamento) */}
+          {type === TransactionType.EXPENSE_SHOP && (
+             <div className="bg-[#2a2a2a] p-3 rounded-xl border border-gray-700 animate-fade-in">
+                <label className="text-xs font-bold text-gray-400 mb-2 block uppercase">Forma de Pagamento</label>
+                <div className="flex gap-2">
+                   <button
+                     type="button"
+                     onClick={() => setExpenseMethod('PIX')}
+                     className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all ${expenseMethod === 'PIX' ? 'bg-orange-600 text-white' : 'bg-[#333] text-gray-400 hover:text-white'}`}
+                   >
+                      <Smartphone size={14} /> Pix
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => setExpenseMethod('CREDIT')}
+                     className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all ${expenseMethod === 'CREDIT' ? 'bg-orange-600 text-white' : 'bg-[#333] text-gray-400 hover:text-white'}`}
+                   >
+                      <CreditCard size={14} /> Crédito
+                   </button>
+                   <button
+                     type="button"
+                     onClick={() => setExpenseMethod('INSTALLMENT')}
+                     className={`flex-1 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-1 transition-all ${expenseMethod === 'INSTALLMENT' ? 'bg-orange-600 text-white' : 'bg-[#333] text-gray-400 hover:text-white'}`}
+                   >
+                      <CalendarClock size={14} /> Parcelado
+                   </button>
+                </div>
+
+                {expenseMethod === 'INSTALLMENT' && (
+                   <div className="mt-3 animate-fade-in">
+                      <label className="text-xs font-bold text-gray-400 mb-1 block uppercase">Quantidade de Parcelas</label>
+                      <input 
+                         type="number"
+                         min="2"
+                         value={expenseInstallments}
+                         onChange={(e) => setExpenseInstallments(e.target.value)}
+                         className={baseInputClass}
+                         placeholder="Ex: 5"
+                      />
+                   </div>
+                )}
+             </div>
+          )}
 
           {/* CALCULADORA DE TAXAS (STONE/REDE/MP) - Apenas para Receita */}
           {type === TransactionType.INCOME && !initialData && amount && parseFloat(amount) > 0 && !amountError && (

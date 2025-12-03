@@ -34,6 +34,10 @@ export interface Transaction {
   type: TransactionType;
   employeeId?: string; // Only if type is EXPENSE_EMPLOYEE
   category?: string; // e.g., 'Parts', 'Rent', 'Advance', 'Salary'
+  
+  // Novos campos para Despesa da Loja
+  paymentMethod?: 'PIX' | 'CREDIT' | 'INSTALLMENT';
+  installments?: number;
 }
 
 // Novos Tipos para Estoque e Serviços
