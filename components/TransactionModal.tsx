@@ -340,10 +340,10 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                  </div>
 
                  {/* Opções de Crédito */}
-                 {calcPaymentMethod === 'CREDIT' && (
+                 {calcPaymentMethod === 'CREDIT' && (currentProviderConfig as any).credit && (
                     <div className="space-y-3 pt-2 border-t border-gray-800">
                        <div className="flex gap-2">
-                          {Object.entries(currentProviderConfig.credit).map(([key, val]) => (
+                          {Object.entries((currentProviderConfig as any).credit).map(([key, val]) => (
                              <button 
                                 key={key} 
                                 type="button" 
