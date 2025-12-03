@@ -420,7 +420,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                       </button>
                    </div>
                    
-                   <div className="flex flex-col md:flex-row gap-3">
+                   <div className="flex flex-col md:flex-row flex-wrap gap-3">
                       {selectedItemType !== 'MANUAL' ? (
                           <>
                             <div className="flex bg-[#222] rounded-lg p-1 border border-gray-600">
@@ -441,7 +441,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                             </div>
 
                             <select 
-                                className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
+                                className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm min-w-[150px]"
                                 value={selectedItemId}
                                 onChange={e => setSelectedItemId(e.target.value)}
                             >
@@ -458,7 +458,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                              <input 
                                type="text"
                                placeholder="Descrição do item manual..."
-                               className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm"
+                               className="flex-1 bg-[#222] border border-gray-600 text-white p-2 rounded-lg outline-none text-sm min-w-[150px]"
                                value={manualName}
                                onChange={e => setManualName(e.target.value)}
                              />
