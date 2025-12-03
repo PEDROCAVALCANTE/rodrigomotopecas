@@ -45,7 +45,7 @@ export const MACHINE_CONFIG = {
   },
   MERCADO_PAGO: {
     label: 'Mercado Pago',
-    methods: ['DEBIT', 'PIX'], // Apenas Débito e Pix conforme solicitado
+    methods: ['DEBIT', 'PIX'],
     debit: 0.99, // 0.99%
     pix: 0.49    // 0.49%
   }

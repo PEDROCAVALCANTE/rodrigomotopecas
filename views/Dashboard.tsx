@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Transaction, TransactionType, Employee } from '../types';
 import { StatCard } from '../components/StatCard';
-import { TrendingUp, TrendingDown, Users, Wallet, ArrowRight, ArrowUpRight, ArrowDownRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
+import { TrendingUp, TrendingDown, Wallet, ArrowRight, ArrowUpRight, ArrowDownRight, Receipt } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -24,36 +24,52 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, employees })
       .filter(t => t.type === TransactionType.EXPENSE_EMPLOYEE)
       .reduce((acc, curr) => acc + curr.amount, 0);
 
+    // Soma dos Salários Fixos de todos os funcionários cadastrados
+    const totalFixedSalaries = employees.reduce((acc, emp) => acc + (emp.fixedSalary || 0), 0);
+
+    // Despesa Total = Gastos Loja + Gastos Extras Func. + Folha Salarial Fixa
+    const totalExpense = shopExpense + empExpense + totalFixedSalaries;
+
     return {
       income,
-      totalExpense: shopExpense + empExpense,
+      totalExpense,
       shopExpense,
       empExpense,
-      balance: income - (shopExpense + empExpense)
+      totalFixedSalaries,
+      balance: income - totalExpense
     };
-  }, [transactions]);
+  }, [transactions, employees]);
 
   // Data for Expense Breakdown Chart (Donut)
   const expenseData = [
     { name: 'Loja', value: stats.shopExpense },
-    { name: 'Funcionários', value: stats.empExpense },
+    { name: 'Extras/Comissões', value: stats.empExpense },
+    { name: 'Salários Fixos', value: stats.totalFixedSalaries },
   ];
-  const PIE_COLORS = ['#ef4444', '#f97316'];
+  const PIE_COLORS = ['#ef4444', '#f97316', '#3b82f6']; // Red, Orange, Blue
 
   // Data for Category Chart (Bar)
   const categoryData = useMemo(() => {
     const catMap = new Map<string, number>();
+    
+    // Add Transactions
     transactions.filter(t => t.type !== TransactionType.INCOME).forEach(t => {
       const cat = t.category || 'Outros';
       const current = catMap.get(cat) || 0;
       catMap.set(cat, current + t.amount);
     });
+
+    // Add Fixed Salaries to a "Salários" category for visualization
+    if (stats.totalFixedSalaries > 0) {
+        const currentSalaries = catMap.get('Salário Base') || 0;
+        catMap.set('Salário Base', currentSalaries + stats.totalFixedSalaries);
+    }
     
     return Array.from(catMap.entries())
       .map(([name, value]) => ({ name, value }))
       .sort((a, b) => b.value - a.value) // Sort by highest expense
       .slice(0, 6); // Top 6 categories
-  }, [transactions]);
+  }, [transactions, stats.totalFixedSalaries]);
 
   return (
     <div className="space-y-8 animate-fade-in pb-10">
@@ -90,9 +106,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, employees })
           variant="orange"
         />
         <StatCard 
-          title="Custo Funcionários" 
-          value={stats.empExpense} 
-          icon={Users} 
+          title="Despesas Fixas" 
+          value={stats.totalExpense} 
+          icon={Receipt} 
           variant="purple"
         />
       </div>
@@ -175,14 +191,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ transactions, employees })
             </div>
           </div>
           {/* Legend */}
-          <div className="mt-4 flex justify-center gap-6">
+          <div className="mt-4 flex justify-center gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <span className="text-sm text-gray-400">Loja</span>
+              <span className="text-xs text-gray-400">Loja</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-orange-500"></div>
-              <span className="text-sm text-gray-400">Pessoal</span>
+              <span className="text-xs text-gray-400">Extras</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+              <span className="text-xs text-gray-400">Salários</span>
             </div>
           </div>
         </div>

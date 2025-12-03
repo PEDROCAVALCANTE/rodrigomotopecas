@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
@@ -314,6 +313,7 @@ const App: React.FC = () => {
         
         <nav className="flex-1 p-4 space-y-2 mt-2 overflow-y-auto">
           <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
+          <NavItem view="CASHIER" icon={Landmark} label="Caixa" />
           <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" />
           <NavItem view="CLIENTS" icon={BookUser} label="Clientes" />
           <NavItem view="INVENTORY" icon={Package} label="Estoque & Serviços" />
@@ -321,7 +321,6 @@ const App: React.FC = () => {
           <div className="pt-4 pb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             <span className="w-8 h-[1px] bg-gray-700"></span> Financeiro
           </div>
-          <NavItem view="CASHIER" icon={Landmark} label="Caixa" />
           <NavItem view="EXPENSES_SHOP" icon={Receipt} label="Despesas da Loja" />
           <NavItem view="EXPENSES_EMP" icon={Users} label="Despesa Funcionário" />
         </nav>
@@ -385,15 +384,7 @@ const App: React.FC = () => {
                   onUpdateBudget={updateBudget}
                   onDeleteBudget={deleteBudget}
               />}
-              {/* ATUALIZADO: Usando onOpenNewTransaction */}
-              {currentView === 'EXPENSES_SHOP' && (
-                <Financials 
-                  transactions={transactions} 
-                  onEditTransaction={openEditTransaction} 
-                  onDeleteTransaction={deleteTransaction} 
-                  onOpenNewTransaction={openNewTransaction}
-                />
-              )}
+              {currentView === 'EXPENSES_SHOP' && <Financials transactions={transactions} employees={employees} activeTab="SHOP" onEditTransaction={openEditTransaction} onDeleteTransaction={deleteTransaction} />}
               {currentView === 'EXPENSES_EMP' && <EmployeeExpenses employees={employees} transactions={transactions} onUpdateEmployee={updateEmployee} onAddTransaction={addTransaction} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} />}
             </>
           )}
