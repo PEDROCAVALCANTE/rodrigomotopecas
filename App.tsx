@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
@@ -384,7 +385,15 @@ const App: React.FC = () => {
                   onUpdateBudget={updateBudget}
                   onDeleteBudget={deleteBudget}
               />}
-              {currentView === 'EXPENSES_SHOP' && <Financials transactions={transactions} employees={employees} activeTab="SHOP" onEditTransaction={openEditTransaction} onDeleteTransaction={deleteTransaction} />}
+              {/* ATUALIZADO: Usando onOpenNewTransaction */}
+              {currentView === 'EXPENSES_SHOP' && (
+                <Financials 
+                  transactions={transactions} 
+                  onEditTransaction={openEditTransaction} 
+                  onDeleteTransaction={deleteTransaction} 
+                  onOpenNewTransaction={openNewTransaction}
+                />
+              )}
               {currentView === 'EXPENSES_EMP' && <EmployeeExpenses employees={employees} transactions={transactions} onUpdateEmployee={updateEmployee} onAddTransaction={addTransaction} onUpdateTransaction={updateTransaction} onDeleteTransaction={deleteTransaction} />}
             </>
           )}
