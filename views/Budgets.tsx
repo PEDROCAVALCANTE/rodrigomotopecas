@@ -1,6 +1,7 @@
+
 import React, { useState, useMemo } from 'react';
 import { Budget, Client, Product, Service, BudgetItem } from '../types';
-import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Calendar, AlertCircle, Wrench, Package, Loader2, Check, CreditCard } from 'lucide-react';
+import { FileText, Plus, Search, Trash2, Printer, CheckCircle, Calendar, AlertCircle, Wrench, Package, Loader2, Check, CreditCard, Edit2 } from 'lucide-react';
 
 interface BudgetsViewProps {
   budgets: Budget[];
@@ -23,6 +24,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
 }) => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   // UI States
   const [isSaving, setIsSaving] = useState(false);
@@ -51,6 +53,25 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
   // Manual Item States
   const [manualName, setManualName] = useState('');
   const [manualPrice, setManualPrice] = useState('');
+
+  // Open Edit Form
+  const handleEditBudget = (b: Budget) => {
+    setEditingId(b.id);
+    setNewBudget({
+      clientId: b.clientId,
+      plate: b.plate || '',
+      items: [...b.items], // Clone items array
+      status: b.status,
+      notes: b.notes || ''
+    });
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setNewBudget({ clientId: '', plate: '', items: [], status: 'PENDING', notes: '' });
+  };
 
   // Helper to add item to budget list
   const addItemToBudget = () => {
@@ -128,16 +149,15 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
     setIsSaving(true);
 
     const client = clients.find(c => c.id === newBudget.clientId);
-    if (!client) {
-        setIsSaving(false);
-        return;
-    }
+    // Se não encontrar o cliente (pode ter sido excluído), tenta manter o nome original se for edição
+    const clientName = client ? client.name : (editingId ? budgets.find(b => b.id === editingId)?.clientName || 'Cliente Desconhecido' : 'Cliente Desconhecido');
+    const motorcycle = client ? client.motorcycle : (editingId ? budgets.find(b => b.id === editingId)?.motorcycle || '' : '');
 
     // Construct the payload safely
     const budgetPayload: any = {
-      clientId: client.id,
-      clientName: client.name,
-      motorcycle: client.motorcycle,
+      clientId: newBudget.clientId,
+      clientName: clientName,
+      motorcycle: motorcycle,
       plate: newBudget.plate.toUpperCase(), // Save plate uppercase
       date: new Date().toISOString().split('T')[0],
       status: newBudget.status,
@@ -148,22 +168,32 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
 
     // Only add warrantyDate if status is APPROVED or COMPLETED
     if (newBudget.status === 'APPROVED' || newBudget.status === 'COMPLETED') {
-       const d = new Date();
-       d.setDate(d.getDate() + 90);
-       budgetPayload.warrantyDate = d.toISOString().split('T')[0];
+       // Se já tiver uma data de garantia (edição), mantém. Se não, cria nova.
+       const existingBudget = editingId ? budgets.find(b => b.id === editingId) : null;
+       
+       if (existingBudget?.warrantyDate) {
+          budgetPayload.warrantyDate = existingBudget.warrantyDate;
+       } else {
+          const d = new Date();
+          d.setDate(d.getDate() + 90);
+          budgetPayload.warrantyDate = d.toISOString().split('T')[0];
+       }
     }
 
     // Simulate network delay for UX
     setTimeout(() => {
-        onAddBudget(budgetPayload);
+        if (editingId) {
+            onUpdateBudget({ ...budgetPayload, id: editingId });
+        } else {
+            onAddBudget(budgetPayload);
+        }
 
         setIsSaving(false);
         setSaveSuccess(true);
 
         setTimeout(() => {
             setSaveSuccess(false);
-            setShowForm(false);
-            setNewBudget({ clientId: '', plate: '', items: [], status: 'PENDING', notes: '' });
+            closeForm();
         }, 1500);
     }, 800);
   };
@@ -287,7 +317,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
         </div>
         {!showForm && (
             <button 
-            onClick={() => setShowForm(true)}
+            onClick={() => { setEditingId(null); setShowForm(true); }}
             className="bg-moto-600 hover:bg-moto-700 text-white px-5 py-3 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-moto-900/30 font-bold"
             >
             <Plus size={20} />
@@ -298,12 +328,12 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
 
       {showForm ? (
         <div className="bg-[#1e1e1e] rounded-2xl shadow-2xl border border-gray-800 overflow-hidden relative">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-moto-500"></div>
+          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-r from-blue-500 to-moto-500"></div>
           
           <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-             <h2 className="text-xl font-bold text-white">Criar Orçamento</h2>
+             <h2 className="text-xl font-bold text-white">{editingId ? 'Editar Orçamento' : 'Criar Orçamento'}</h2>
              <button 
-                onClick={() => setShowForm(false)} 
+                onClick={closeForm} 
                 className="text-gray-500 hover:text-white transition-colors"
                 disabled={isSaving}
              >
@@ -321,6 +351,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                      value={newBudget.clientId}
                      onChange={e => setNewBudget({...newBudget, clientId: e.target.value})}
                      required
+                     disabled={!!editingId} // Disable client change on edit to avoid data mismatch
                    >
                      <option value="">Selecione o Cliente...</option>
                      {clients.map(c => (
@@ -529,7 +560,7 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                            Orçamento Salvo!
                         </>
                       ) : (
-                        'Salvar Orçamento'
+                        editingId ? 'Atualizar Orçamento' : 'Salvar Orçamento'
                       )}
                    </button>
                 </div>
@@ -607,6 +638,14 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                              <CheckCircle size={14} /> Aprovar
                            </button>
                          )}
+
+                         <button 
+                            onClick={() => handleEditBudget(b)} 
+                            className="p-2 text-blue-500 hover:bg-blue-500/10 rounded-lg transition-colors"
+                            title="Editar Orçamento"
+                         >
+                            <Edit2 size={18} />
+                         </button>
 
                          <button 
                            onClick={() => handleDelete(b.id)} 
