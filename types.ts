@@ -27,6 +27,7 @@ export interface Client {
   dueDate: string; // YYYY-MM-DD
   installments: number; // Number of parcels
   status?: 'PENDING' | 'PAID'; // Optional status for future use
+  notes?: string; // Novo campo de Anotação
 }
 
 export interface Transaction {

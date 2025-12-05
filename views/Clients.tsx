@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2, MessageCircle, AlertTriangle, Bell, ArrowRight } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2, MessageCircle, AlertTriangle, Bell, ArrowRight, StickyNote } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -25,6 +25,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     value: string;
     dueDate: string;
     installments: string;
+    notes: string;
   }>({
     name: '',
     type: 'INDIVIDUAL',
@@ -32,7 +33,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     motorcycle: '',
     value: '',
     dueDate: new Date().toISOString().split('T')[0],
-    installments: '1'
+    installments: '1',
+    notes: ''
   });
 
   // Função para formatar telefone (Máscara)
@@ -59,7 +61,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       motorcycle: client.motorcycle,
       value: client.value.toString(),
       dueDate: client.dueDate,
-      installments: client.installments.toString()
+      installments: client.installments.toString(),
+      notes: client.notes || ''
     });
     setShowForm(true);
   };
@@ -74,7 +77,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       motorcycle: '',
       value: '',
       dueDate: new Date().toISOString().split('T')[0],
-      installments: '1'
+      installments: '1',
+      notes: ''
     });
   };
 
@@ -89,6 +93,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       value: parseFloat(newClient.value) || 0,
       dueDate: newClient.dueDate,
       installments: parseInt(newClient.installments) || 1,
+      notes: newClient.notes
     };
 
     if (editingId) {
@@ -341,6 +346,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                   required
                 />
               </div>
+              
+              <div className="md:col-span-2">
+                 <label className="block text-sm font-medium text-gray-400 mb-1">Anotações / Observações</label>
+                 <textarea 
+                    className="w-full bg-[#111] border border-gray-700 text-white p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none placeholder-gray-600"
+                    placeholder="Ex: Cliente prefere contato após às 18h..."
+                    rows={2}
+                    value={newClient.notes}
+                    onChange={e => setNewClient({...newClient, notes: e.target.value})}
+                 />
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 pt-2">
@@ -498,6 +514,15 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                       {client.installments}x de {(client.value / client.installments).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </span>
                   </div>
+
+                  {client.notes && (
+                      <div className="mt-3 bg-gray-800/30 p-3 rounded-lg border border-gray-700/50 flex gap-2">
+                        <StickyNote size={14} className="text-gray-500 shrink-0 mt-0.5" />
+                        <p className="text-xs text-gray-400 italic leading-relaxed">
+                            {client.notes}
+                        </p>
+                      </div>
+                  )}
                 </div>
               </div>
 

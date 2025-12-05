@@ -79,7 +79,8 @@ export const INITIAL_CLIENTS: Client[] = [
     motorcycle: 'Honda Titan 160', 
     value: 450.00, 
     dueDate: '2023-11-15', 
-    installments: 2 
+    installments: 2,
+    notes: 'Cliente prefere contato via WhatsApp após as 14h.'
   },
   { 
     id: '2', 
