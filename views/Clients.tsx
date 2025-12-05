@@ -1,14 +1,14 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2 } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2, MessageCircle, AlertTriangle, Bell, ArrowRight } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
   onAddClient: (client: Omit<Client, 'id'>) => void;
   onDeleteClient: (id: string) => void;
   onUpdateClient: (client: Client) => void;
-  setCurrentView: (view: any) => void; // Added for navigation
+  setCurrentView: (view: any) => void;
 }
 
 export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, onDeleteClient, onUpdateClient, setCurrentView }) => {
@@ -120,13 +120,101 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     }
   };
 
-  const filteredClients = clients.filter(c => 
-    c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    c.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // --- Lógica de Notificação e Cobrança ---
+  const sendWhatsAppNotification = (client: Client) => {
+    if (!client.phone) return alert("Cliente sem telefone cadastrado.");
+
+    // Limpar telefone (deixar apenas números)
+    const cleanPhone = client.phone.replace(/\D/g, '');
+    const phoneWithCountry = `55${cleanPhone}`;
+    
+    const firstName = client.name.split(' ')[0];
+    const formattedDate = new Date(client.dueDate).toLocaleDateString('pt-BR');
+    const formattedValue = client.value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+    // Mensagem Personalizada
+    const message = `Olá ${firstName}, tudo bem? Aqui é da *Rodrigo MotoPeças* 🛠️.%0A%0AConsta em nosso sistema um valor pendente de *${formattedValue}* referente a ${client.motorcycle}, com vencimento em *${formattedDate}*.%0A%0APodemos confirmar o pagamento ou agendar uma data?`;
+
+    // Abrir WhatsApp Web/App
+    window.open(`https://wa.me/${phoneWithCountry}?text=${message}`, '_blank');
+  };
+
+  // Filtros e Listas de Cobrança
+  const { overdueClients, dueTodayClients, filteredClients } = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Lista principal filtrada pela busca
+    const filtered = clients.filter(c => 
+      c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      c.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    // Listas de Notificação (Apenas Pendentes)
+    const pending = clients.filter(c => c.status !== 'PAID');
+    
+    const overdue = pending.filter(c => c.dueDate < today);
+    const dueToday = pending.filter(c => c.dueDate === today);
+
+    return { overdueClients: overdue, dueTodayClients: dueToday, filteredClients: filtered };
+  }, [clients, searchTerm]);
+
 
   return (
     <div className="space-y-6">
+      
+      {/* --- CENTRAL DE NOTIFICAÇÕES --- */}
+      {(overdueClients.length > 0 || dueTodayClients.length > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+           {/* Card Vencendo Hoje */}
+           {dueTodayClients.length > 0 && (
+              <div className="bg-yellow-500/10 border border-yellow-500/30 p-4 rounded-xl flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                    <div className="bg-yellow-500 p-2 rounded-full text-black animate-pulse">
+                       <Bell size={20} />
+                    </div>
+                    <div>
+                       <h3 className="text-yellow-500 font-bold text-lg">{dueTodayClients.length} Vencendo Hoje</h3>
+                       <p className="text-gray-400 text-xs">Clientes aguardando contato.</p>
+                    </div>
+                 </div>
+                 <div className="flex -space-x-2">
+                    {dueTodayClients.slice(0, 3).map(c => (
+                       <div key={c.id} className="w-8 h-8 rounded-full bg-gray-800 border-2 border-[#111] flex items-center justify-center text-xs font-bold text-gray-400" title={c.name}>
+                          {c.name.charAt(0)}
+                       </div>
+                    ))}
+                    {dueTodayClients.length > 3 && (
+                       <div className="w-8 h-8 rounded-full bg-gray-700 border-2 border-[#111] flex items-center justify-center text-xs text-white">
+                          +{dueTodayClients.length - 3}
+                       </div>
+                    )}
+                 </div>
+              </div>
+           )}
+
+           {/* Card Atrasados */}
+           {overdueClients.length > 0 && (
+              <div className="bg-red-500/10 border border-red-500/30 p-4 rounded-xl flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                    <div className="bg-red-500 p-2 rounded-full text-white">
+                       <AlertTriangle size={20} />
+                    </div>
+                    <div>
+                       <h3 className="text-red-500 font-bold text-lg">{overdueClients.length} Atrasados</h3>
+                       <p className="text-gray-400 text-xs">Precisam de cobrança urgente.</p>
+                    </div>
+                 </div>
+                 <button 
+                   onClick={() => setSearchTerm('atrasado')} // Truque simples para filtrar visualmente se quiser implementar depois
+                   className="text-xs text-red-400 hover:text-red-300 font-bold flex items-center gap-1"
+                 >
+                    Ver Lista <ArrowRight size={12}/>
+                 </button>
+              </div>
+           )}
+        </div>
+      )}
+
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-100">Gerenciamento de Clientes</h1>
         <button 
@@ -291,15 +379,26 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
         {filteredClients.map(client => {
           const isPaid = client.status === 'PAID';
           const isCompany = client.type === 'COMPANY';
+          const today = new Date().toISOString().split('T')[0];
+          const isOverdue = !isPaid && client.dueDate < today;
+          const isDueToday = !isPaid && client.dueDate === today;
           
           return (
             <div 
               key={client.id} 
               className={`bg-[#1e1e1e] rounded-xl shadow-lg border transition-all overflow-hidden group flex flex-col justify-between
-                ${isPaid ? 'border-green-500/20 hover:border-green-500/40' : 'border-gray-800 hover:border-moto-500/40'}`}
+                ${isPaid ? 'border-green-500/20 hover:border-green-500/40' : 
+                  isOverdue ? 'border-red-500/50 hover:border-red-500' :
+                  isDueToday ? 'border-yellow-500/50 hover:border-yellow-500' :
+                  'border-gray-800 hover:border-moto-500/40'}`}
             >
               <div>
-                <div className={`p-5 border-b flex justify-between items-start ${isPaid ? 'bg-green-500/5 border-green-500/10' : 'bg-white/5 border-gray-800'}`}>
+                <div className={`p-5 border-b flex justify-between items-start 
+                   ${isPaid ? 'bg-green-500/5 border-green-500/10' : 
+                     isOverdue ? 'bg-red-500/5 border-red-500/20' : 
+                     isDueToday ? 'bg-yellow-500/5 border-yellow-500/20' : 
+                     'bg-white/5 border-gray-800'}`}>
+                  
                   <div className="flex gap-3">
                     <div className={`p-2 rounded-full h-fit ${isCompany ? 'bg-blue-500/20 text-blue-500' : 'bg-orange-500/20 text-orange-500'}`}>
                        {isCompany ? <Building2 size={20} /> : <User size={20} />}
@@ -324,6 +423,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                     </div>
                   </div>
                   <div className="flex gap-1 items-start">
+                    {/* Botão WhatsApp para Cobrança */}
+                    {!isPaid && (
+                       <button 
+                         onClick={() => sendWhatsAppNotification(client)}
+                         className="text-green-500 hover:bg-green-500/10 p-1.5 rounded-lg transition-colors mr-1"
+                         title="Cobrar no WhatsApp"
+                       >
+                         <MessageCircle size={20} />
+                       </button>
+                    )}
+
                     <button 
                       onClick={() => handleEditClient(client)}
                       className="text-gray-500 hover:text-blue-500 transition-colors p-1"
@@ -341,14 +451,26 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                   </div>
                 </div>
                 
-                {isPaid && (
-                  <div className="px-5 pt-2">
-                    <div className="bg-green-500/20 text-green-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-green-500/20 w-fit">
-                      <CheckCircle size={10} />
-                      PAGO
-                    </div>
-                  </div>
-                )}
+                <div className="px-5 pt-2 flex gap-2">
+                   {isPaid && (
+                     <div className="bg-green-500/20 text-green-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-green-500/20 w-fit">
+                        <CheckCircle size={10} />
+                        PAGO
+                     </div>
+                   )}
+                   {isOverdue && (
+                      <div className="bg-red-500/20 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-red-500/20 w-fit animate-pulse">
+                        <AlertTriangle size={10} />
+                        ATRASADO
+                     </div>
+                   )}
+                   {isDueToday && (
+                      <div className="bg-yellow-500/20 text-yellow-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-yellow-500/20 w-fit">
+                        <Bell size={10} />
+                        VENCE HOJE
+                     </div>
+                   )}
+                </div>
                 
                 <div className="p-5 space-y-4">
                   <div className="flex justify-between items-center">
@@ -361,7 +483,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">Vencimento</span>
                     <div className={`flex items-center gap-1.5 px-2 py-1 rounded text-sm font-medium
-                      ${isPaid ? 'bg-green-500/10 text-green-500' : 'bg-gray-800 text-gray-300'}`}>
+                      ${isPaid ? 'bg-green-500/10 text-green-500' : 
+                        isOverdue ? 'bg-red-500/10 text-red-500 font-bold' :
+                        isDueToday ? 'bg-yellow-500/10 text-yellow-500 font-bold' :
+                        'bg-gray-800 text-gray-300'}`}>
                       <Calendar size={14} />
                       {new Date(client.dueDate).toLocaleDateString('pt-BR')}
                     </div>
