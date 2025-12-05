@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { TransactionType, Employee, Transaction } from '../types';
 import { CATEGORIES, INCOME_SOURCES, MACHINE_CONFIG, ANTECIPATION_RATE, EXPENSE_PAYMENT_METHODS } from '../constants';
-import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote, Landmark } from 'lucide-react';
+import { X, CreditCard, Calculator, ArrowRight, Check, AlertCircle, Smartphone, Banknote, Landmark, Info } from 'lucide-react';
 
 interface TransactionModalProps {
   isOpen: boolean;
@@ -153,7 +153,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       rate = config.debit || 0;
       label = `Débito (${config.label})`;
     } else if (calcPaymentMethod === 'CREDIT') {
-      // Safely access credit config
+      // Safely access credit config using type assertion
       const creditConfig = (config as any).credit;
       if (creditConfig) {
         const brandData = creditConfig[selectedBrand];
@@ -308,50 +308,57 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
           {/* CALCULADORA PANEL */}
           {showCalculator && (
-            <div className="bg-[#111] p-4 rounded-xl border border-gray-700 animate-fade-in">
-              <div className="flex justify-between items-center mb-3">
+            <div className="bg-[#111] p-4 rounded-xl border border-gray-700 animate-fade-in shadow-2xl">
+              <div className="flex justify-between items-center mb-4 border-b border-gray-800 pb-2">
                  <h3 className="text-white font-bold text-sm flex items-center gap-2"><CreditCard size={16}/> Calculadora de Taxas</h3>
                  <button type="button" onClick={() => setShowCalculator(false)} className="text-gray-500 hover:text-white"><X size={16}/></button>
               </div>
               
-              <div className="space-y-3">
+              <div className="space-y-4">
                  {/* 1. Selecionar Maquininha */}
-                 <div className="grid grid-cols-3 gap-2">
-                    {(Object.keys(MACHINE_CONFIG) as Array<keyof typeof MACHINE_CONFIG>).map((key) => (
-                       <button
-                          key={key}
-                          type="button"
-                          onClick={() => setProvider(key)}
-                          className={`p-2 rounded-lg text-xs font-bold transition-all border ${provider === key ? 'bg-moto-600 text-white border-moto-500' : 'bg-[#222] text-gray-400 border-gray-700 hover:bg-[#333]'}`}
-                       >
-                          {MACHINE_CONFIG[key].label}
-                       </button>
-                    ))}
+                 <div>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">1. Provedor</span>
+                    <div className="grid grid-cols-3 gap-2">
+                        {(Object.keys(MACHINE_CONFIG) as Array<keyof typeof MACHINE_CONFIG>).map((key) => (
+                        <button
+                            key={key}
+                            type="button"
+                            onClick={() => setProvider(key)}
+                            className={`p-2 rounded-lg text-xs font-bold transition-all border ${provider === key ? 'bg-moto-600 text-white border-moto-500' : 'bg-[#222] text-gray-400 border-gray-700 hover:bg-[#333]'}`}
+                        >
+                            {MACHINE_CONFIG[key].label}
+                        </button>
+                        ))}
+                    </div>
                  </div>
 
                  {/* 2. Selecionar Método (Dinâmico baseado na maquininha) */}
-                 <div className="flex gap-2 p-1 bg-[#222] rounded-lg border border-gray-700">
-                    {currentProviderConfig.methods.includes('PIX') && (
-                       <button type="button" onClick={() => setCalcPaymentMethod('PIX')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'PIX' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500'}`}>Pix</button>
-                    )}
-                    {currentProviderConfig.methods.includes('DEBIT') && (
-                       <button type="button" onClick={() => setCalcPaymentMethod('DEBIT')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'DEBIT' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500'}`}>Débito</button>
-                    )}
-                    {currentProviderConfig.methods.includes('CREDIT') && (
-                       <button type="button" onClick={() => setCalcPaymentMethod('CREDIT')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'CREDIT' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-500'}`}>Crédito</button>
-                    )}
+                 <div>
+                    <span className="text-[10px] font-bold text-gray-500 uppercase mb-1.5 block">2. Método</span>
+                    <div className="flex gap-2 p-1 bg-[#222] rounded-lg border border-gray-700">
+                        {currentProviderConfig.methods.includes('PIX') && (
+                        <button type="button" onClick={() => setCalcPaymentMethod('PIX')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'PIX' ? 'bg-green-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>Pix</button>
+                        )}
+                        {currentProviderConfig.methods.includes('DEBIT') && (
+                        <button type="button" onClick={() => setCalcPaymentMethod('DEBIT')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'DEBIT' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>Débito</button>
+                        )}
+                        {currentProviderConfig.methods.includes('CREDIT') && (
+                        <button type="button" onClick={() => setCalcPaymentMethod('CREDIT')} className={`flex-1 py-1.5 rounded text-xs font-bold transition-all ${calcPaymentMethod === 'CREDIT' ? 'bg-orange-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}>Crédito</button>
+                        )}
+                    </div>
                  </div>
 
-                 {/* Opções de Crédito */}
+                 {/* Opções de Crédito (Bandeira e Juros) */}
                  {calcPaymentMethod === 'CREDIT' && (currentProviderConfig as any).credit && (
-                    <div className="space-y-3 pt-2 border-t border-gray-800">
-                       <div className="flex gap-2">
+                    <div className="bg-[#1a1a1a] p-3 rounded-lg border border-gray-800">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase mb-2 block">3. Bandeira & Condição</span>
+                       <div className="flex gap-2 mb-3">
                           {Object.entries((currentProviderConfig as any).credit).map(([key, val]) => (
                              <button 
                                 key={key} 
                                 type="button" 
                                 onClick={() => setSelectedBrand(key)}
-                                className={`flex-1 py-1 px-2 rounded border text-xs font-bold uppercase ${selectedBrand === key ? 'bg-white text-black border-white' : 'bg-transparent text-gray-500 border-gray-700'}`}
+                                className={`flex-1 py-1 px-2 rounded border text-xs font-bold uppercase ${selectedBrand === key ? 'bg-gray-100 text-black border-white' : 'bg-transparent text-gray-500 border-gray-700 hover:border-gray-500'}`}
                              >
                                 {/* @ts-ignore */}
                                 {val.label}
@@ -359,7 +366,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                           ))}
                        </div>
                        
-                       {/* Seletor Juros (Apenas Rede tem essa distinção clara no pedido, mas Stone tem taxa única) */}
+                       {/* Seletor Juros */}
                        {provider === 'REDE' && (
                           <div className="flex gap-2">
                               <button 
@@ -367,58 +374,72 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
                                 onClick={() => setIsInstallmentMode(false)}
                                 className={`flex-1 py-1.5 rounded text-xs font-bold border transition-all ${!isInstallmentMode ? 'bg-green-500/20 text-green-500 border-green-500/50' : 'bg-transparent text-gray-500 border-gray-700'}`}
                               >
-                                 À Vista / Sem Juros
+                                 À Vista
                               </button>
                               <button 
                                 type="button" 
                                 onClick={() => setIsInstallmentMode(true)}
                                 className={`flex-1 py-1.5 rounded text-xs font-bold border transition-all ${isInstallmentMode ? 'bg-red-500/20 text-red-500 border-red-500/50' : 'bg-transparent text-gray-500 border-gray-700'}`}
                               >
-                                 Parcelado / Com Juros
+                                 Parcelado
                               </button>
                           </div>
                        )}
                     </div>
                  )}
 
-                 <div className="flex items-center gap-2 mt-2">
+                 {/* Info Taxa Atual */}
+                 <div className="flex items-center justify-between text-xs text-gray-400 bg-[#222] px-3 py-2 rounded-lg border border-gray-700/50">
+                    <span className="flex items-center gap-1.5"><Info size={12} className="text-moto-500"/> Taxa Aplicada:</span>
+                    <span className="font-mono text-white font-bold text-sm bg-gray-800 px-2 rounded border border-gray-600">{calc.rate}%</span>
+                 </div>
+
+                 {/* Antecipação Toggle */}
+                 <div className="flex items-center gap-2 pl-1">
                     <input 
                       type="checkbox" 
                       id="antecipation" 
                       checked={useAntecipation} 
                       onChange={e => setUseAntecipation(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-600 bg-[#333] text-moto-600 focus:ring-moto-600"
+                      className="w-4 h-4 rounded border-gray-600 bg-[#333] text-moto-600 focus:ring-moto-600 accent-moto-600"
                     />
-                    <label htmlFor="antecipation" className="text-xs text-gray-400">Aplicar antecipação automática ({ANTECIPATION_RATE}%)</label>
+                    <label htmlFor="antecipation" className="text-xs text-gray-400 cursor-pointer select-none">Aplicar antecipação automática (+{ANTECIPATION_RATE}%)</label>
                  </div>
 
-                 <div className="bg-[#222] p-3 rounded-lg border border-gray-700 mt-2">
-                    <div className="flex justify-between text-xs mb-1">
-                       <span className="text-gray-400">Valor Bruto:</span>
-                       <span className="text-white">R$ {calc.rawAmount.toFixed(2)}</span>
+                 {/* Resultado / Receipt */}
+                 <div className="bg-[#1a1a1a] p-4 rounded-xl border border-gray-700 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-500 to-emerald-600"></div>
+                    
+                    <div className="flex justify-between text-xs mb-2 items-center">
+                       <span className="text-gray-400 uppercase tracking-wide">Valor Bruto</span>
+                       <span className="text-gray-300 font-mono">R$ {calc.rawAmount.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-xs mb-1 text-red-400">
-                       <span>Taxa Maquininha ({calc.rate}%):</span>
-                       <span>- R$ {calc.feeAmount.toFixed(2)}</span>
+                    
+                    <div className="space-y-1 pb-3 border-b border-gray-800">
+                        <div className="flex justify-between text-xs text-red-400 items-center">
+                            <span>(-) Taxa Maquininha</span>
+                            <span className="font-mono">- R$ {calc.feeAmount.toFixed(2)}</span>
+                        </div>
+                        {useAntecipation && (
+                        <div className="flex justify-between text-xs text-red-400 items-center">
+                            <span>(-) Antecipação</span>
+                            <span className="font-mono">- R$ {calc.antecipationFee.toFixed(2)}</span>
+                        </div>
+                        )}
                     </div>
-                    {useAntecipation && (
-                       <div className="flex justify-between text-xs mb-1 text-red-400">
-                          <span>Antecipação ({ANTECIPATION_RATE}%):</span>
-                          <span>- R$ {calc.antecipationFee.toFixed(2)}</span>
-                       </div>
-                    )}
-                    <div className="border-t border-gray-600 my-1 pt-1 flex justify-between font-bold text-sm">
-                       <span className="text-green-500">Líquido a Receber:</span>
-                       <span className="text-green-500">R$ {calc.net.toFixed(2)}</span>
+
+                    <div className="mt-3 flex justify-between items-end">
+                       <span className="text-xs font-bold text-green-500 uppercase">Líquido a Receber</span>
+                       <span className="text-2xl font-bold text-green-500 leading-none">R$ {calc.net.toFixed(2)}</span>
                     </div>
                  </div>
                  
                  <button 
                    type="button" 
                    onClick={applyNetValue}
-                   className="w-full bg-moto-600 hover:bg-moto-700 text-white py-2 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+                   className="w-full bg-moto-600 hover:bg-moto-700 text-white py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-moto-900/20 transition-all active:scale-[0.98]"
                  >
-                    <Check size={16} /> Aplicar Valor Líquido
+                    <Check size={18} /> USAR VALOR LÍQUIDO
                  </button>
               </div>
             </div>
