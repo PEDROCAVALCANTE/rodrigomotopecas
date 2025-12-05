@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2 } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -13,6 +14,7 @@ interface ClientsViewProps {
 export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, onDeleteClient, onUpdateClient, setCurrentView }) => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   // Form State
   const [newClient, setNewClient] = useState<{
@@ -48,19 +50,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     setNewClient({...newClient, phone: value});
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onAddClient({
-      name: newClient.name,
-      type: newClient.type,
-      phone: newClient.phone,
-      motorcycle: newClient.motorcycle,
-      value: parseFloat(newClient.value) || 0,
-      dueDate: newClient.dueDate,
-      installments: parseInt(newClient.installments) || 1,
-      status: 'PENDING'
+  const handleEditClient = (client: Client) => {
+    setEditingId(client.id);
+    setNewClient({
+      name: client.name,
+      type: client.type,
+      phone: client.phone,
+      motorcycle: client.motorcycle,
+      value: client.value.toString(),
+      dueDate: client.dueDate,
+      installments: client.installments.toString()
     });
-    // Reset form
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingId(null);
     setNewClient({
       name: '',
       type: 'INDIVIDUAL',
@@ -70,7 +76,39 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       dueDate: new Date().toISOString().split('T')[0],
       installments: '1'
     });
-    setShowForm(false);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const clientData = {
+      name: newClient.name,
+      type: newClient.type,
+      phone: newClient.phone,
+      motorcycle: newClient.motorcycle,
+      value: parseFloat(newClient.value) || 0,
+      dueDate: newClient.dueDate,
+      installments: parseInt(newClient.installments) || 1,
+    };
+
+    if (editingId) {
+      // Update existing
+      const existingClient = clients.find(c => c.id === editingId);
+      if (existingClient) {
+        onUpdateClient({
+          ...existingClient,
+          ...clientData
+        });
+      }
+    } else {
+      // Create new
+      onAddClient({
+        ...clientData,
+        status: 'PENDING'
+      });
+    }
+    
+    closeForm();
   };
 
   const handleMarkAsPaid = (client: Client) => {
@@ -92,7 +130,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       <div className="flex flex-col md:flex-row justify-between md:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-100">Gerenciamento de Clientes</h1>
         <button 
-          onClick={() => setShowForm(!showForm)}
+          onClick={() => { setEditingId(null); setShowForm(!showForm); }}
           className="bg-moto-600 hover:bg-moto-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-lg shadow-moto-600/20"
         >
           <Plus size={18} />
@@ -106,7 +144,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
           <div className="absolute top-0 left-0 w-1 h-full bg-moto-500"></div>
           <h2 className="text-lg font-bold text-gray-100 mb-4 flex items-center gap-2">
             <User className="text-moto-600" size={20}/>
-            Cadastrar Cliente
+            {editingId ? 'Editar Cliente' : 'Cadastrar Cliente'}
           </h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -193,10 +231,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-1">Data de Vencimento</label>
+                <label className="block text-sm font-medium text-gray-400 mb-1 text-orange-500">Data de Vencimento</label>
                 <input 
                   type="date"
-                  className="w-full bg-[#111] border border-gray-700 text-white p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none placeholder-gray-600" 
+                  className="w-full bg-[#111] border border-gray-700 text-white p-2.5 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none placeholder-gray-600" 
                   value={newClient.dueDate}
                   onChange={e => setNewClient({...newClient, dueDate: e.target.value})}
                   required
@@ -220,7 +258,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
             <div className="flex justify-end gap-3 pt-2">
               <button 
                 type="button" 
-                onClick={() => setShowForm(false)} 
+                onClick={closeForm} 
                 className="px-4 py-2 text-gray-400 hover:text-white hover:bg-gray-800 rounded-lg transition-colors"
               >
                 Cancelar
@@ -229,7 +267,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                 type="submit" 
                 className="px-6 py-2 bg-moto-600 hover:bg-moto-700 text-white font-medium rounded-lg shadow-md transition-colors"
               >
-                Salvar Cadastro
+                {editingId ? 'Atualizar Cliente' : 'Salvar Cadastro'}
               </button>
             </div>
           </form>
@@ -285,7 +323,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                       </div>
                     </div>
                   </div>
-                  <div className="flex flex-col gap-2 items-end">
+                  <div className="flex gap-1 items-start">
+                    <button 
+                      onClick={() => handleEditClient(client)}
+                      className="text-gray-500 hover:text-blue-500 transition-colors p-1"
+                      title="Editar Cliente"
+                    >
+                      <Edit2 size={18} />
+                    </button>
                     <button 
                       onClick={() => onDeleteClient(client.id)}
                       className="text-gray-600 hover:text-red-500 transition-colors p-1"
@@ -293,14 +338,17 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                     >
                       <Trash2 size={18} />
                     </button>
-                    {isPaid && (
-                       <div className="bg-green-500/20 text-green-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-green-500/20">
-                         <CheckCircle size={10} />
-                         PAGO
-                       </div>
-                    )}
                   </div>
                 </div>
+                
+                {isPaid && (
+                  <div className="px-5 pt-2">
+                    <div className="bg-green-500/20 text-green-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-green-500/20 w-fit">
+                      <CheckCircle size={10} />
+                      PAGO
+                    </div>
+                  </div>
+                )}
                 
                 <div className="p-5 space-y-4">
                   <div className="flex justify-between items-center">

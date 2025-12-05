@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
@@ -21,9 +22,11 @@ import {
   deleteDoc, 
   doc, 
   onSnapshot,
-  setDoc
+  setDoc,
+  enableNetwork,
+  disableNetwork
 } from 'firebase/firestore';
-import { signInAnonymously } from 'firebase/auth';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<'DASHBOARD' | 'CASHIER' | 'EMPLOYEES' | 'CLIENTS' | 'INVENTORY' | 'BUDGETS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
@@ -39,6 +42,7 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDemoMode, setIsDemoMode] = useState(false);
   const [permissionError, setPermissionError] = useState(false); 
+  const [isOffline, setIsOffline] = useState(false);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalDefaultType, setModalDefaultType] = useState<TransactionType>(TransactionType.EXPENSE_SHOP);
@@ -72,18 +76,18 @@ const App: React.FC = () => {
         console.error("Firebase Error:", error);
         if (error.code === 'permission-denied') {
             setPermissionError(true);
+            startDemoMode();
+        } else if (error.code === 'unavailable') {
+            // Offline mode handled gracefully by Firestore cache usually, 
+            // but if initial load fails, we show local data
+            setIsOffline(true);
+            if (employees.length === 0) startDemoMode();
+        } else {
+            startDemoMode();
         }
-        startDemoMode();
     };
 
-    const connectToFirebase = async () => {
-      try {
-        try {
-            await signInAnonymously(auth);
-        } catch (authErr) {
-            console.warn("Auth Anônima falhou, tentando acesso direto...", authErr);
-        }
-        
+    const setupListeners = () => {
         // 1. Employees
         unsubscribeEmployees = onSnapshot(collection(db, 'employees'), 
           (snapshot) => {
@@ -93,7 +97,8 @@ const App: React.FC = () => {
             if (snapshot.empty && !snapshot.metadata.fromCache) {
                INITIAL_EMPLOYEES.forEach(async (emp) => {
                   const { id, ...empData } = emp;
-                  await setDoc(doc(db, 'employees', id), empData);
+                  // Use setDoc com merge true para evitar sobrescrever se já existir parcial
+                  await setDoc(doc(db, 'employees', id), empData, { merge: true });
                });
             }
             setPermissionError(false);
@@ -107,7 +112,7 @@ const App: React.FC = () => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
             setClients(data);
           },
-          (error) => console.error(error)
+          (error) => console.error(error) // Silent error for non-critical
         );
 
         // 3. Transactions
@@ -127,11 +132,10 @@ const App: React.FC = () => {
           (snapshot) => {
              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
              setProducts(data);
-             // Auto-seed Products if empty
              if (snapshot.empty && !snapshot.metadata.fromCache) {
                 INITIAL_PRODUCTS.forEach(async (prod) => {
                    const { id, ...prodData } = prod;
-                   await setDoc(doc(db, 'products', id), prodData);
+                   await setDoc(doc(db, 'products', id), prodData, { merge: true });
                 });
              }
           },
@@ -143,11 +147,10 @@ const App: React.FC = () => {
           (snapshot) => {
              const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Service));
              setServices(data);
-             // Auto-seed Services if empty
              if (snapshot.empty && !snapshot.metadata.fromCache) {
                 INITIAL_SERVICES.forEach(async (serv) => {
                    const { id, ...servData } = serv;
-                   await setDoc(doc(db, 'services', id), servData);
+                   await setDoc(doc(db, 'services', id), servData, { merge: true });
                 });
              }
           },
@@ -163,15 +166,31 @@ const App: React.FC = () => {
           },
           (error) => console.error(error)
         );
-
-      } catch (error) {
-        handleFirebaseError(error);
-      }
     };
 
-    connectToFirebase();
+    // --- AUTH FLOW ---
+    // Use onAuthStateChanged to ensure we ONLY attach listeners when we have a user.
+    // This prevents "Missing or insufficient permissions" errors on initial load.
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+        if (user) {
+            // User is signed in, setup listeners
+            console.log("Usuário autenticado:", user.uid);
+            setupListeners();
+        } else {
+            // No user, try to sign in anonymously
+            console.log("Tentando login anônimo...");
+            signInAnonymously(auth).catch((error) => {
+                console.error("Erro no login anônimo:", error);
+                // If login fails (e.g. offline), we might still want to try listeners 
+                // if persistence is enabled, OR fall back to demo.
+                // For now, let's fall back to Demo to ensure app works.
+                startDemoMode();
+            });
+        }
+    });
 
     return () => {
+      unsubscribeAuth();
       if (unsubscribeEmployees) unsubscribeEmployees();
       if (unsubscribeClients) unsubscribeClients();
       if (unsubscribeTransactions) unsubscribeTransactions();
@@ -188,7 +207,7 @@ const App: React.FC = () => {
        setLocal((prev: any[]) => [...prev, { ...data, id: Math.random().toString() }]);
        return;
     }
-    try { await addDoc(collection(db, coll), data); } catch(e) { console.error(e); }
+    try { await addDoc(collection(db, coll), data); } catch(e) { console.error(e); alert("Erro ao salvar. Verifique conexão."); }
   };
 
   const genericUpdate = async (coll: string, data: any, setLocal: any) => {
@@ -196,7 +215,7 @@ const App: React.FC = () => {
        setLocal((prev: any[]) => prev.map((i: any) => i.id === data.id ? data : i));
        return;
     }
-    try { const { id, ...rest } = data; await updateDoc(doc(db, coll, id), rest); } catch(e) { console.error(e); }
+    try { const { id, ...rest } = data; await updateDoc(doc(db, coll, id), rest); } catch(e) { console.error(e); alert("Erro ao atualizar."); }
   };
 
   const genericDelete = async (coll: string, id: string, setLocal: any) => {
@@ -205,7 +224,7 @@ const App: React.FC = () => {
        setLocal((prev: any[]) => prev.filter((i: any) => i.id !== id));
        return;
     }
-    try { await deleteDoc(doc(db, coll, id)); } catch(e) { console.error(e); }
+    try { await deleteDoc(doc(db, coll, id)); } catch(e) { console.error(e); alert("Erro ao excluir."); }
   };
 
   // Specific Wrappers
@@ -329,10 +348,10 @@ const App: React.FC = () => {
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto bg-[#121212] relative w-full">
         {permissionError && (
-          <div className="bg-red-600 text-white text-sm font-bold py-3 px-4 text-center flex flex-col md:flex-row items-center justify-center gap-2 shadow-lg animate-fade-in">
+          <div className="bg-red-600 text-white text-sm font-bold py-3 px-4 text-center flex flex-col md:flex-row items-center justify-center gap-2 shadow-lg animate-fade-in sticky top-0 z-50">
             <AlertTriangle size={20} className="text-yellow-300" />
-            <span>BLOQUEIO DE SEGURANÇA: O banco de dados está bloqueado.</span>
-            <span className="font-normal opacity-90">Verifique as regras do Firebase.</span>
+            <span>BLOQUEIO DE SEGURANÇA: Permissão negada pelo banco.</span>
+            <span className="font-normal opacity-90">Verifique se a Autenticação Anônima está ativada no Firebase.</span>
           </div>
         )}
 

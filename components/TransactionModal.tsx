@@ -153,11 +153,14 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
       rate = config.debit || 0;
       label = `Débito (${config.label})`;
     } else if (calcPaymentMethod === 'CREDIT') {
-      // @ts-ignore
-      const brandData = config.credit[selectedBrand];
-      if (brandData) {
-        rate = isInstallmentMode ? brandData.installment : brandData.spot;
-        label = `${brandData.label} - ${isInstallmentMode ? 'Com Juros' : 'Sem Juros'} (${config.label})`;
+      // Safely access credit config
+      const creditConfig = (config as any).credit;
+      if (creditConfig) {
+        const brandData = creditConfig[selectedBrand];
+        if (brandData) {
+            rate = isInstallmentMode ? brandData.installment : brandData.spot;
+            label = `${brandData.label} - ${isInstallmentMode ? 'Com Juros' : 'Sem Juros'} (${config.label})`;
+        }
       }
     }
     
