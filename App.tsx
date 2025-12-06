@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark, LogOut } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -10,6 +10,7 @@ import { ClientsView } from './views/Clients';
 import { InventoryView } from './views/Inventory';
 import { BudgetsView } from './views/Budgets';
 import { CashierView } from './views/Cashier';
+import { Login } from './views/Login';
 import { TransactionModal } from './components/TransactionModal';
 import { INITIAL_CLIENTS, INITIAL_EMPLOYEES, INITIAL_TRANSACTIONS, INITIAL_PRODUCTS, INITIAL_SERVICES } from './constants';
 
@@ -29,6 +30,10 @@ import {
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
 const App: React.FC = () => {
+  // --- Auth State ---
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true);
+
   const [currentView, setCurrentView] = useState<'DASHBOARD' | 'CASHIER' | 'EMPLOYEES' | 'CLIENTS' | 'INVENTORY' | 'BUDGETS' | 'EXPENSES_SHOP' | 'EXPENSES_EMP'>('DASHBOARD');
   
   // Data State
@@ -50,8 +55,30 @@ const App: React.FC = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // Check Local Storage for Auth
+  useEffect(() => {
+    const storedAuth = localStorage.getItem('rodrigo_app_auth');
+    if (storedAuth === 'true') {
+      setIsAuthenticated(true);
+    }
+    setIsAuthChecking(false);
+  }, []);
+
+  const handleLogin = () => {
+    localStorage.setItem('rodrigo_app_auth', 'true');
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('rodrigo_app_auth');
+    setIsAuthenticated(false);
+  };
+
   // --- Firebase Connection & Listeners ---
   useEffect(() => {
+    // Só conecta ao Firebase se estiver autenticado na tela de login
+    if (!isAuthenticated) return;
+
     let unsubscribeEmployees: () => void;
     let unsubscribeClients: () => void;
     let unsubscribeTransactions: () => void;
@@ -198,7 +225,7 @@ const App: React.FC = () => {
       if (unsubscribeServices) unsubscribeServices();
       if (unsubscribeBudgets) unsubscribeBudgets();
     };
-  }, []);
+  }, [isAuthenticated]); // Re-run effect when authentication changes
   
   // --- Firestore Handlers ---
 
@@ -301,6 +328,10 @@ const App: React.FC = () => {
     </button>
   );
 
+  // Render Login if not authenticated
+  if (isAuthChecking) return <div className="h-screen bg-[#111]"></div>;
+  if (!isAuthenticated) return <Login onLogin={handleLogin} />;
+
   return (
     <div className="flex h-screen bg-[#111] font-sans text-gray-100">
       
@@ -343,6 +374,19 @@ const App: React.FC = () => {
           <NavItem view="EXPENSES_SHOP" icon={Receipt} label="Despesas da Loja" />
           <NavItem view="EXPENSES_EMP" icon={Users} label="Despesa Funcionário" />
         </nav>
+
+        {/* Logout Button */}
+        <div className="p-4 border-t border-gray-800">
+           <button 
+             onClick={() => {
+               if(confirm('Tem certeza que deseja sair?')) handleLogout();
+             }}
+             className="w-full flex items-center justify-center space-x-2 px-4 py-3 rounded-xl bg-gray-900 text-gray-400 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+           >
+             <LogOut size={18} />
+             <span className="font-bold text-sm">Sair do Sistema</span>
+           </button>
+        </div>
       </aside>
 
       {/* Main Content */}
