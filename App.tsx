@@ -312,19 +312,21 @@ const App: React.FC = () => {
     setEditingTransaction(null);
   };
 
-  const NavItem = ({ view, icon: Icon, label }: { view: string, icon: any, label: string }) => (
+  const NavItem = ({ view, icon: Icon, label, iconColor }: { view: string, icon: any, label: string, iconColor?: string }) => (
     <button
       onClick={() => {
         setCurrentView(view as any);
         setIsMobileMenuOpen(false);
       }}
-      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200
+      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 group
         ${currentView === view 
           ? 'bg-moto-600 text-white shadow-lg shadow-moto-900/20' 
           : 'text-gray-400 hover:bg-gray-800 hover:text-white'}`}
     >
-      <Icon size={20} />
-      <span className="font-medium">{label}</span>
+      <div className={`${currentView === view ? 'text-white' : (iconColor || 'text-gray-400 group-hover:text-white')}`}>
+          <Icon size={20} />
+      </div>
+      <span className="font-medium whitespace-nowrap">{label}</span>
     </button>
   );
 
@@ -362,17 +364,17 @@ const App: React.FC = () => {
         </div>
         
         <nav className="flex-1 p-4 space-y-2 mt-2 overflow-y-auto">
-          <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" />
-          <NavItem view="CASHIER" icon={Landmark} label="Caixa" />
-          <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" />
-          <NavItem view="CLIENTS" icon={BookUser} label="Clientes" />
-          <NavItem view="INVENTORY" icon={Package} label="Estoque & Serviços" />
-          <NavItem view="BUDGETS" icon={FileText} label="Orçamentos" />
+          <NavItem view="DASHBOARD" icon={LayoutDashboard} label="Dashboard" iconColor="text-purple-500" />
+          <NavItem view="CASHIER" icon={Landmark} label="Caixa" iconColor="text-emerald-500" />
+          <NavItem view="EMPLOYEES" icon={Users} label="Funcionários" iconColor="text-blue-500" />
+          <NavItem view="CLIENTS" icon={BookUser} label="Clientes" iconColor="text-yellow-500" />
+          <NavItem view="INVENTORY" icon={Package} label="Estoque & Serviços" iconColor="text-pink-500" />
+          <NavItem view="BUDGETS" icon={FileText} label="Orçamentos" iconColor="text-cyan-500" />
           <div className="pt-4 pb-2 px-4 text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
             <span className="w-8 h-[1px] bg-gray-700"></span> Financeiro
           </div>
-          <NavItem view="EXPENSES_SHOP" icon={Receipt} label="Despesas da Loja" />
-          <NavItem view="EXPENSES_EMP" icon={Users} label="Despesa Funcionário" />
+          <NavItem view="EXPENSES_SHOP" icon={Receipt} label="Despesas da Loja" iconColor="text-red-500" />
+          <NavItem view="EXPENSES_EMP" icon={Users} label="Desp. Funcionário" iconColor="text-orange-400" />
         </nav>
 
         {/* Info Assinatura do Software */}
