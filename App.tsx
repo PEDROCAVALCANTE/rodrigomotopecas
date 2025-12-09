@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark, LogOut, Crown, Calendar } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
 import { Dashboard } from './views/Dashboard';
@@ -73,6 +73,45 @@ const App: React.FC = () => {
     localStorage.removeItem('rodrigo_app_auth');
     setIsAuthenticated(false);
   };
+
+  // --- Auto Logout on Inactivity (10 minutes) ---
+  const inactivityTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const INACTIVITY_LIMIT = 10 * 60 * 1000; // 10 minutos em milissegundos
+
+  const resetInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+
+    if (isAuthenticated) {
+      inactivityTimerRef.current = setTimeout(() => {
+        // Ação ao expirar o tempo
+        alert("Sessão expirada por inatividade (10 minutos). Por favor, faça login novamente.");
+        handleLogout();
+      }, INACTIVITY_LIMIT);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    // Só ativa os listeners se estiver autenticado
+    if (!isAuthenticated) return;
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    
+    // Inicia o timer na montagem/login
+    resetInactivityTimer();
+
+    const handleActivity = () => {
+      resetInactivityTimer();
+    };
+
+    // Adiciona listeners para resetar o timer em qualquer atividade
+    events.forEach(event => window.addEventListener(event, handleActivity));
+
+    // Cleanup
+    return () => {
+      if (inactivityTimerRef.current) clearTimeout(inactivityTimerRef.current);
+      events.forEach(event => window.removeEventListener(event, handleActivity));
+    };
+  }, [isAuthenticated, resetInactivityTimer]);
 
   // --- Firebase Connection & Listeners ---
   useEffect(() => {
