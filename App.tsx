@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark, LogOut, Crown, Calendar } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -374,6 +374,32 @@ const App: React.FC = () => {
           <NavItem view="EXPENSES_SHOP" icon={Receipt} label="Despesas da Loja" />
           <NavItem view="EXPENSES_EMP" icon={Users} label="Despesa Funcionário" />
         </nav>
+
+        {/* Info Assinatura do Software */}
+        <div className="mx-4 mb-2 p-4 bg-gradient-to-br from-gray-900 to-black rounded-xl border border-gray-800 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 p-2 opacity-10 group-hover:opacity-20 transition-opacity">
+               <Crown size={40} className="text-yellow-500" />
+            </div>
+            
+            <div className="relative z-10">
+               <div className="flex items-center gap-2 mb-1">
+                  <div className="bg-yellow-500/20 p-1.5 rounded-lg text-yellow-500">
+                     <Crown size={14} />
+                  </div>
+                  <span className="text-xs font-bold text-yellow-500 uppercase tracking-wider">Sistema Licenciado</span>
+               </div>
+               
+               <div className="mt-2">
+                  <p className="text-gray-400 text-[10px] uppercase font-bold">Mensalidade</p>
+                  <p className="text-white font-bold text-lg leading-tight">R$ 139,00<span className="text-xs font-normal text-gray-500">/mês</span></p>
+               </div>
+
+               <div className="mt-2 flex items-center gap-1.5 text-[10px] text-gray-400 bg-gray-800/50 p-1.5 rounded border border-gray-700/50">
+                  <Calendar size={10} className="text-orange-500"/>
+                  <span>Vencimento: <strong>Dia 10</strong></span>
+               </div>
+            </div>
+        </div>
 
         {/* Logout Button */}
         <div className="p-4 border-t border-gray-800">
