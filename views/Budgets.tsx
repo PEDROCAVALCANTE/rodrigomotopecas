@@ -225,40 +225,76 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
               <head>
                   <title>Orçamento - Rodrigo MotoPeças</title>
                   <style>
-                      body { font-family: Arial, sans-serif; padding: 20px; }
-                      .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-                      .title { font-size: 24px; font-weight: bold; }
-                      .subtitle { font-size: 14px; color: #555; }
-                      .info { margin-bottom: 20px; }
-                      .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-                      .table th, .table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                      .table th { background-color: #f2f2f2; }
-                      .total { text-align: right; font-size: 20px; font-weight: bold; margin-top: 20px; }
-                      .footer { margin-top: 40px; font-size: 12px; text-align: center; color: #555; border-top: 1px solid #ccc; padding-top: 10px; }
-                      .warranty { background: #eef; padding: 10px; border-radius: 5px; margin-top: 20px; font-size: 12px; }
+                      body { font-family: 'Segoe UI', Arial, sans-serif; padding: 40px; color: #333; }
+                      .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #f97316; padding-bottom: 20px; }
+                      .title { font-size: 28px; font-weight: 900; color: #000; text-transform: uppercase; letter-spacing: 1px; }
+                      .subtitle { font-size: 14px; color: #666; font-weight: bold; margin-top: 5px; }
+                      .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 30px; background: #f8f8f8; padding: 20px; border-radius: 8px; border: 1px solid #eee; }
+                      .info-item { font-size: 14px; }
+                      .info-label { font-weight: bold; color: #f97316; display: block; font-size: 11px; text-transform: uppercase; }
+                      .info-value { font-weight: 500; font-size: 16px; }
+                      
+                      .table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px; }
+                      .table th { background-color: #333; color: #fff; padding: 12px 8px; text-align: left; text-transform: uppercase; font-size: 11px; }
+                      .table td { border-bottom: 1px solid #eee; padding: 10px 8px; color: #444; }
+                      .table tr:nth-child(even) { background-color: #fafafa; }
+                      
+                      .total-section { text-align: right; margin-top: 20px; padding-top: 20px; border-top: 2px solid #000; }
+                      .total-label { font-size: 14px; font-weight: bold; color: #666; margin-right: 10px; }
+                      .total-value { font-size: 24px; font-weight: 900; color: #000; }
+                      
+                      .footer { margin-top: 60px; font-size: 11px; text-align: center; color: #888; border-top: 1px solid #eee; padding-top: 20px; }
+                      
+                      .warranty { background: #eff6ff; padding: 15px; border-radius: 8px; margin-top: 30px; font-size: 12px; border: 1px solid #dbeafe; color: #1e3a8a; line-height: 1.5; }
+                      
+                      /* Assinaturas */
+                      .signatures { display: flex; justify-content: space-between; margin-top: 80px; page-break-inside: avoid; }
+                      .sig-box { width: 40%; text-align: center; }
+                      .sig-line { border-top: 1px solid #000; padding-top: 10px; font-weight: bold; font-size: 13px; }
+                      .sig-role { font-size: 11px; color: #666; text-transform: uppercase; margin-top: 2px; }
                   </style>
               </head>
               <body>
                   <div class="header">
                       <div class="title">RODRIGO MOTOPEÇAS & ATACAREJO</div>
-                      <div class="subtitle">Orçamento de Peças e Serviços</div>
+                      <div class="subtitle">Orçamento / Ordem de Serviço</div>
                   </div>
                   
-                  <div class="info">
-                      <strong>Cliente:</strong> ${b.clientName}<br>
-                      <strong>Moto:</strong> ${b.motorcycle} <span style="margin-left: 20px;"><strong>Placa:</strong> ${b.plate || 'N/A'}</span><br>
-                      <strong>Data:</strong> ${new Date(b.date).toLocaleDateString('pt-BR')}<br>
-                      <strong>Status:</strong> ${b.status === 'PENDING' ? 'Pendente' : 'Aprovado'}
+                  <div class="info-grid">
+                      <div class="info-item">
+                          <span class="info-label">Cliente</span>
+                          <span class="info-value">${b.clientName}</span>
+                      </div>
+                      <div class="info-item">
+                          <span class="info-label">Data de Emissão</span>
+                          <span class="info-value">${new Date(b.date).toLocaleDateString('pt-BR')}</span>
+                      </div>
+                      <div class="info-item">
+                          <span class="info-label">Veículo</span>
+                          <span class="info-value">${b.motorcycle}</span>
+                      </div>
+                      <div class="info-item">
+                          <span class="info-label">Placa</span>
+                          <span class="info-value" style="font-family: monospace; background: #ddd; padding: 2px 6px; border-radius: 4px;">${b.plate || '---'}</span>
+                      </div>
+                      <div class="info-item">
+                          <span class="info-label">Status</span>
+                          <span class="info-value">${b.status === 'PENDING' ? 'Orçamento (Pendente)' : 'Aprovado / Executado'}</span>
+                      </div>
+                      <div class="info-item">
+                          <span class="info-label">ID do Documento</span>
+                          <span class="info-value">#${b.id.slice(0,6).toUpperCase()}</span>
+                      </div>
                   </div>
 
                   <table class="table">
                       <thead>
                           <tr>
-                              <th>Item</th>
+                              <th>Descrição do Item</th>
                               <th>Tipo</th>
-                              <th>Qtd</th>
-                              <th>Unitário</th>
-                              <th>Total</th>
+                              <th style="text-align: center">Qtd</th>
+                              <th style="text-align: right">Valor Unit.</th>
+                              <th style="text-align: right">Total</th>
                           </tr>
                       </thead>
                       <tbody>
@@ -266,30 +302,43 @@ export const BudgetsView: React.FC<BudgetsViewProps> = ({
                               <tr>
                                   <td>${item.name}</td>
                                   <td>${item.type === 'PRODUCT' ? 'Peça' : 'Serviço'}</td>
-                                  <td>${item.quantity}</td>
-                                  <td>R$ ${item.unitPrice.toFixed(2)}</td>
-                                  <td>R$ ${item.totalPrice.toFixed(2)}</td>
+                                  <td style="text-align: center">${item.quantity}</td>
+                                  <td style="text-align: right">R$ ${item.unitPrice.toFixed(2)}</td>
+                                  <td style="text-align: right"><strong>R$ ${item.totalPrice.toFixed(2)}</strong></td>
                               </tr>
                           `).join('')}
                       </tbody>
                   </table>
 
-                  <div class="total">
-                      Total: R$ ${b.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <div class="total-section">
+                      <span class="total-label">VALOR TOTAL:</span>
+                      <span class="total-value">R$ ${b.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                   </div>
 
                   ${b.warrantyDate ? `
                   <div class="warranty">
-                      <strong>TERMO DE GARANTIA:</strong><br>
-                      Garantia válida até ${new Date(b.warrantyDate).toLocaleDateString('pt-BR')} (90 dias) referente aos serviços prestados e peças substituídas, 
-                      mediante apresentação deste documento. A garantia não cobre mau uso.
+                      <strong>📜 TERMO DE GARANTIA (90 DIAS):</strong><br>
+                      A garantia é válida até <strong>${new Date(b.warrantyDate).toLocaleDateString('pt-BR')}</strong>, cobrindo exclusivamente defeitos de fabricação nas peças substituídas e falhas na mão de obra realizada. A garantia perde a validade em caso de mau uso, acidentes ou intervenção de terceiros.
                   </div>
                   ` : ''}
 
-                  ${b.notes ? `<div style="margin-top: 20px; font-style: italic;">Obs: ${b.notes}</div>` : ''}
+                  ${b.notes ? `<div style="margin-top: 20px; font-style: italic; background: #fff3cd; padding: 10px; border: 1px solid #ffeeba; border-radius: 5px; color: #856404; font-size: 12px;"><strong>Observações:</strong> ${b.notes}</div>` : ''}
+
+                  <!-- ASSINATURAS -->
+                  <div class="signatures">
+                      <div class="sig-box">
+                          <div class="sig-line">RODRIGO MOTOPEÇAS</div>
+                          <div class="sig-role">Responsável Técnico / Oficina</div>
+                      </div>
+                      <div class="sig-box">
+                          <div class="sig-line">${b.clientName}</div>
+                          <div class="sig-role">Assinatura do Cliente</div>
+                      </div>
+                  </div>
 
                   <div class="footer">
-                      Obrigado pela preferência!
+                      Documento gerado eletronicamente pelo sistema Rodrigo MotoPeças.<br>
+                      Agradecemos a preferência!
                   </div>
                   <script>window.print();</script>
               </body>
