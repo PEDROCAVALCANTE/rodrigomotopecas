@@ -28,6 +28,7 @@ export interface Client {
   installments: number; // Number of parcels
   status?: 'PENDING' | 'PAID'; // Optional status for future use
   notes?: string; // Novo campo de Anotação
+  subscriptionValue?: number; // Valor da Assinatura Recorrente Mensal
 }
 
 export interface Transaction {

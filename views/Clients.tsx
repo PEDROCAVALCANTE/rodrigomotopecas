@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Client } from '../types';
-import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2, MessageCircle, AlertTriangle, Bell, ArrowRight, StickyNote } from 'lucide-react';
+import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2, MessageCircle, AlertTriangle, Bell, ArrowRight, StickyNote, Crown } from 'lucide-react';
 
 interface ClientsViewProps {
   clients: Client[];
@@ -26,6 +26,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     dueDate: string;
     installments: string;
     notes: string;
+    subscriptionValue: string;
   }>({
     name: '',
     type: 'INDIVIDUAL',
@@ -34,7 +35,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     value: '',
     dueDate: new Date().toISOString().split('T')[0],
     installments: '1',
-    notes: ''
+    notes: '',
+    subscriptionValue: ''
   });
 
   // Função para formatar telefone (Máscara)
@@ -62,7 +64,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       value: client.value.toString(),
       dueDate: client.dueDate,
       installments: client.installments.toString(),
-      notes: client.notes || ''
+      notes: client.notes || '',
+      subscriptionValue: client.subscriptionValue ? client.subscriptionValue.toString() : ''
     });
     setShowForm(true);
   };
@@ -78,7 +81,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       value: '',
       dueDate: new Date().toISOString().split('T')[0],
       installments: '1',
-      notes: ''
+      notes: '',
+      subscriptionValue: ''
     });
   };
 
@@ -93,7 +97,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
       value: parseFloat(newClient.value) || 0,
       dueDate: newClient.dueDate,
       installments: parseInt(newClient.installments) || 1,
-      notes: newClient.notes
+      notes: newClient.notes,
+      subscriptionValue: parseFloat(newClient.subscriptionValue) || undefined
     };
 
     if (editingId) {
@@ -348,6 +353,27 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
               </div>
               
               <div className="md:col-span-2">
+                 <label className="block text-sm font-medium text-purple-400 mb-1 flex items-center gap-2">
+                    <Crown size={16} />
+                    Assinatura Recorrente (Opcional)
+                 </label>
+                 <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 font-bold text-xs">R$</span>
+                    </div>
+                    <input 
+                        type="number"
+                        step="0.01"
+                        className="w-full bg-[#111] border border-purple-900/50 text-white p-2.5 pl-8 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none placeholder-gray-600"
+                        placeholder="Ex: 139.99 (Valor Mensal)"
+                        value={newClient.subscriptionValue}
+                        onChange={e => setNewClient({...newClient, subscriptionValue: e.target.value})}
+                    />
+                 </div>
+                 <p className="text-[10px] text-gray-500 mt-1">Se preenchido, será exibido no card do cliente como assinante mensal.</p>
+              </div>
+
+              <div className="md:col-span-2">
                  <label className="block text-sm font-medium text-gray-400 mb-1">Anotações / Observações</label>
                  <textarea 
                     className="w-full bg-[#111] border border-gray-700 text-white p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none placeholder-gray-600"
@@ -398,12 +424,14 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
           const today = new Date().toISOString().split('T')[0];
           const isOverdue = !isPaid && client.dueDate < today;
           const isDueToday = !isPaid && client.dueDate === today;
+          const hasSubscription = client.subscriptionValue && client.subscriptionValue > 0;
           
           return (
             <div 
               key={client.id} 
               className={`bg-[#1e1e1e] rounded-xl shadow-lg border transition-all overflow-hidden group flex flex-col justify-between
-                ${isPaid ? 'border-green-500/20 hover:border-green-500/40' : 
+                ${hasSubscription ? 'border-purple-500/30' : 
+                  isPaid ? 'border-green-500/20 hover:border-green-500/40' : 
                   isOverdue ? 'border-red-500/50 hover:border-red-500' :
                   isDueToday ? 'border-yellow-500/50 hover:border-yellow-500' :
                   'border-gray-800 hover:border-moto-500/40'}`}
@@ -467,7 +495,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                   </div>
                 </div>
                 
-                <div className="px-5 pt-2 flex gap-2">
+                <div className="px-5 pt-2 flex flex-wrap gap-2">
+                   {hasSubscription && (
+                     <div className="bg-purple-500/20 text-purple-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-purple-500/20 w-fit">
+                        <Crown size={10} />
+                        Assinante: {client.subscriptionValue?.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês
+                     </div>
+                   )}
                    {isPaid && (
                      <div className="bg-green-500/20 text-green-500 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide flex items-center gap-1 border border-green-500/20 w-fit">
                         <CheckCircle size={10} />

@@ -90,7 +90,8 @@ export const INITIAL_CLIENTS: Client[] = [
     motorcycle: 'Frota Yamaha Fazer', 
     value: 1200.00, 
     dueDate: '2023-11-20', 
-    installments: 4 
+    installments: 4,
+    subscriptionValue: 139.99 
   }
 ];
 
