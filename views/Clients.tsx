@@ -464,7 +464,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                     {/* Botão WhatsApp para Cobrança */}
                     {!isPaid && (
                        <button 
-                         onClick={() => sendWhatsAppNotification(client)}
+                         type="button"
+                         onClick={(e) => {
+                            e.stopPropagation();
+                            sendWhatsAppNotification(client);
+                         }}
                          className="text-green-500 hover:bg-green-500/10 p-1.5 rounded-lg transition-colors mr-1"
                          title="Cobrar no WhatsApp"
                        >
@@ -473,15 +477,23 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                     )}
 
                     <button 
-                      onClick={() => handleEditClient(client)}
+                      type="button"
+                      onClick={(e) => {
+                         e.stopPropagation();
+                         handleEditClient(client);
+                      }}
                       className="text-gray-500 hover:text-blue-500 transition-colors p-1"
                       title="Editar Cliente"
                     >
                       <Edit2 size={18} />
                     </button>
                     <button 
-                      onClick={() => onDeleteClient(client.id)}
-                      className="text-gray-600 hover:text-red-500 transition-colors p-1"
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteClient(client.id);
+                      }}
+                      className="text-gray-600 hover:text-red-500 transition-colors p-1 relative z-10"
                       title="Excluir Cliente"
                     >
                       <Trash2 size={18} />
