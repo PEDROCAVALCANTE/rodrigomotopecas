@@ -140,7 +140,8 @@ const App: React.FC = () => {
         console.error("Firebase Error:", error);
         if (error.code === 'permission-denied') {
             setPermissionError(true);
-            startDemoMode();
+            // Don't auto-start demo mode on read permission error alone, 
+            // wait for operation error to prompt user or just show warning
         } else if (error.code === 'unavailable') {
             setIsOffline(true);
             if (employees.length === 0) startDemoMode();
@@ -259,7 +260,15 @@ const App: React.FC = () => {
   const handleOperationError = (e: any, setLocal: any, data?: any, action: 'add' | 'update' | 'delete' = 'add') => {
       console.error("Firebase Operation Error:", e);
       
-      const confirmSwitch = confirm("Houve um erro de conexão com o servidor. Deseja alternar para o MODO OFFLINE/DEMO para salvar seus dados localmente e continuar trabalhando?");
+      let message = "Houve um erro de conexão com o servidor.";
+    
+      if (e.code === 'permission-denied') {
+        message = "ERRO DE PERMISSÃO: O banco de dados recusou a operação. Verifique as 'Regras de Segurança' no Console do Firebase (Firestore Rules) ou sua autenticação.";
+      } else if (e.code === 'unavailable') {
+        message = "Você está offline ou o servidor está indisponível.";
+      }
+
+      const confirmSwitch = confirm(`${message}\n\nDeseja alternar para o MODO OFFLINE (Demo) para salvar seus dados localmente e continuar trabalhando?`);
       
       if (confirmSwitch) {
           setIsDemoMode(true);
@@ -272,12 +281,22 @@ const App: React.FC = () => {
           } else if (action === 'delete' && data) { // data is id here
                setLocal((prev: any[]) => prev.filter((i: any) => i.id !== data));
           }
-      } else {
-          alert("A operação falhou. Verifique sua conexão.");
       }
   };
 
+  const validateData = (data: any) => {
+      for (const key in data) {
+          if (typeof data[key] === 'number' && isNaN(data[key])) {
+              alert(`Erro Interno: O campo '${key}' contém um valor inválido (NaN). A operação foi cancelada para proteger o banco de dados.`);
+              return false;
+          }
+      }
+      return true;
+  };
+
   const genericAdd = async (coll: string, data: any, setLocal: any) => {
+    if (!validateData(data)) return;
+
     if (isDemoMode) {
        setLocal((prev: any[]) => [...prev, { ...data, id: Math.random().toString() }]);
        return;
@@ -290,6 +309,8 @@ const App: React.FC = () => {
   };
 
   const genericUpdate = async (coll: string, data: any, setLocal: any) => {
+    if (!validateData(data)) return;
+
     if (isDemoMode) {
        setLocal((prev: any[]) => prev.map((i: any) => i.id === data.id ? data : i));
        return;

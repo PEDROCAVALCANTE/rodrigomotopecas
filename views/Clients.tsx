@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Client } from '../types';
 import { Plus, Search, Calendar, Bike, User, Trash2, Phone, CheckCircle, CircleDollarSign, Building2, FileText, Edit2, MessageCircle, AlertTriangle, Bell, ArrowRight, StickyNote, Crown } from 'lucide-react';
@@ -89,9 +88,19 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Tratamento seguro para valores numéricos com vírgula
-    const safeValue = newClient.value ? parseFloat(newClient.value.replace(',', '.')) : 0;
-    const safeSubValue = newClient.subscriptionValue ? parseFloat(newClient.subscriptionValue.replace(',', '.')) : undefined;
+    // Tratamento seguro para valores numéricos com vírgula e remoção de caracteres de moeda
+    // Remove "R$", espaços e troca vírgula por ponto
+    const cleanValue = newClient.value.replace(/[R$\s]/g, '').replace(',', '.');
+    const safeValue = cleanValue ? parseFloat(cleanValue) : 0;
+
+    const cleanSubValue = newClient.subscriptionValue.replace(/[R$\s]/g, '').replace(',', '.');
+    // FIX: Firebase não aceita 'undefined', então usamos 0 se estiver vazio
+    const safeSubValue = cleanSubValue ? parseFloat(cleanSubValue) : 0;
+
+    if (isNaN(safeValue)) {
+        alert("O Valor Total informado é inválido. Verifique se há letras ou símbolos incorretos.");
+        return;
+    }
 
     const clientData = {
       name: newClient.name,
@@ -157,11 +166,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
   const { overdueClients, dueTodayClients, filteredClients } = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
     
-    // Lista principal filtrada pela busca
-    const filtered = clients.filter(c => 
-      c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      c.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    // Lista principal filtrada pela busca e ORDENADA ALFABETICAMENTE
+    const filtered = clients
+      .filter(c => 
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        c.motorcycle.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+      .sort((a, b) => a.name.localeCompare(b.name)); // Ordenação A-Z
 
     // Listas de Notificação (Apenas Pendentes)
     const pending = clients.filter(c => c.status !== 'PAID');
@@ -354,27 +365,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                   onChange={e => setNewClient({...newClient, installments: e.target.value})}
                   required
                 />
-              </div>
-              
-              <div className="md:col-span-2">
-                 <label className="block text-sm font-medium text-purple-400 mb-1 flex items-center gap-2">
-                    <Crown size={16} />
-                    Assinatura Recorrente (Opcional)
-                 </label>
-                 <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 font-bold text-xs">R$</span>
-                    </div>
-                    <input 
-                        type="text"
-                        inputMode="decimal"
-                        className="w-full bg-[#111] border border-purple-900/50 text-white p-2.5 pl-8 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none placeholder-gray-600"
-                        placeholder="Ex: 139.99 (Valor Mensal)"
-                        value={newClient.subscriptionValue}
-                        onChange={e => setNewClient({...newClient, subscriptionValue: e.target.value})}
-                    />
-                 </div>
-                 <p className="text-[10px] text-gray-500 mt-1">Se preenchido, será exibido no card do cliente como assinante mensal.</p>
               </div>
 
               <div className="md:col-span-2">
