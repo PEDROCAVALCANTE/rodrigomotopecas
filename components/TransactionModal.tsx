@@ -95,7 +95,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const parsedAmount = parseFloat(amount);
+    // Tratamento seguro para valores numéricos com vírgula
+    const parsedAmount = parseFloat(amount.replace(',', '.'));
     
     if (!amount || isNaN(parsedAmount)) {
       setAmountError('Digite um valor válido.');
@@ -138,7 +139,7 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
 
   // --- Calculator Logic ---
   const getCalculatedValues = () => {
-    const rawAmount = parseFloat(amount) || 0;
+    const rawAmount = parseFloat(amount.replace(',', '.')) || 0;
     let rate = 0;
     let label = '';
     
@@ -251,8 +252,8 @@ export const TransactionModal: React.FC<TransactionModalProps> = ({
             <div>
               <label className={labelClass}>Valor (R$)</label>
               <input 
-                type="number"
-                step="0.01"
+                type="text"
+                inputMode="decimal"
                 className={`${baseInputClass} text-xl font-bold ${amountError ? '!border-red-500 !bg-red-900/10' : ''}`}
                 placeholder="0.00"
                 value={amount}

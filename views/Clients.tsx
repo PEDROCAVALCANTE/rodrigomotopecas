@@ -89,16 +89,20 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Tratamento seguro para valores numéricos com vírgula
+    const safeValue = newClient.value ? parseFloat(newClient.value.replace(',', '.')) : 0;
+    const safeSubValue = newClient.subscriptionValue ? parseFloat(newClient.subscriptionValue.replace(',', '.')) : undefined;
+
     const clientData = {
       name: newClient.name,
       type: newClient.type,
       phone: newClient.phone,
       motorcycle: newClient.motorcycle,
-      value: parseFloat(newClient.value) || 0,
+      value: safeValue,
       dueDate: newClient.dueDate,
       installments: parseInt(newClient.installments) || 1,
       notes: newClient.notes,
-      subscriptionValue: parseFloat(newClient.subscriptionValue) || undefined
+      subscriptionValue: safeSubValue
     };
 
     if (editingId) {
@@ -318,8 +322,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-1">Valor Total (R$)</label>
                 <input 
-                  type="number"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   className="w-full bg-[#111] border border-gray-700 text-white p-2.5 rounded-lg focus:ring-2 focus:ring-moto-500 outline-none placeholder-gray-600" 
                   placeholder="0.00" 
                   value={newClient.value}
@@ -362,8 +366,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
                         <span className="text-gray-500 font-bold text-xs">R$</span>
                     </div>
                     <input 
-                        type="number"
-                        step="0.01"
+                        type="text"
+                        inputMode="decimal"
                         className="w-full bg-[#111] border border-purple-900/50 text-white p-2.5 pl-8 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none placeholder-gray-600"
                         placeholder="Ex: 139.99 (Valor Mensal)"
                         value={newClient.subscriptionValue}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark, LogOut, Crown, Calendar } from 'lucide-react';
+import { LayoutDashboard, Users, Receipt, PlusCircle, Wrench, BookUser, Loader2, AlertTriangle, Menu, X, Package, FileText, Landmark, LogOut, Crown, Calendar, WifiOff } from 'lucide-react';
 import { Transaction, Employee, TransactionType, Client, Product, Service, Budget } from './types';
 import { Dashboard } from './views/Dashboard';
 import { EmployeesView } from './views/Employees';
@@ -23,9 +23,7 @@ import {
   deleteDoc, 
   doc, 
   onSnapshot,
-  setDoc,
-  enableNetwork,
-  disableNetwork
+  setDoc
 } from 'firebase/firestore';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 
@@ -84,8 +82,8 @@ const App: React.FC = () => {
     if (isAuthenticated) {
       inactivityTimerRef.current = setTimeout(() => {
         // Ação ao expirar o tempo
-        alert("Sessão expirada por inatividade (10 minutos). Por favor, faça login novamente.");
         handleLogout();
+        alert("Sessão expirada por inatividade (10 minutos). Por favor, faça login novamente.");
       }, INACTIVITY_LIMIT);
     }
   }, [isAuthenticated]);
@@ -144,8 +142,6 @@ const App: React.FC = () => {
             setPermissionError(true);
             startDemoMode();
         } else if (error.code === 'unavailable') {
-            // Offline mode handled gracefully by Firestore cache usually, 
-            // but if initial load fails, we show local data
             setIsOffline(true);
             if (employees.length === 0) startDemoMode();
         } else {
@@ -163,7 +159,6 @@ const App: React.FC = () => {
             if (snapshot.empty && !snapshot.metadata.fromCache) {
                INITIAL_EMPLOYEES.forEach(async (emp) => {
                   const { id, ...empData } = emp;
-                  // Use setDoc com merge true para evitar sobrescrever se já existir parcial
                   await setDoc(doc(db, 'employees', id), empData, { merge: true });
                });
             }
@@ -178,7 +173,7 @@ const App: React.FC = () => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Client));
             setClients(data);
           },
-          (error) => console.error(error) // Silent error for non-critical
+          (error) => console.error(error)
         );
 
         // 3. Transactions
@@ -235,21 +230,14 @@ const App: React.FC = () => {
     };
 
     // --- AUTH FLOW ---
-    // Use onAuthStateChanged to ensure we ONLY attach listeners when we have a user.
-    // This prevents "Missing or insufficient permissions" errors on initial load.
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
         if (user) {
-            // User is signed in, setup listeners
             console.log("Usuário autenticado:", user.uid);
             setupListeners();
         } else {
-            // No user, try to sign in anonymously
             console.log("Tentando login anônimo...");
             signInAnonymously(auth).catch((error) => {
                 console.error("Erro no login anônimo:", error);
-                // If login fails (e.g. offline), we might still want to try listeners 
-                // if persistence is enabled, OR fall back to demo.
-                // For now, let's fall back to Demo to ensure app works.
                 startDemoMode();
             });
         }
@@ -264,16 +252,41 @@ const App: React.FC = () => {
       if (unsubscribeServices) unsubscribeServices();
       if (unsubscribeBudgets) unsubscribeBudgets();
     };
-  }, [isAuthenticated]); // Re-run effect when authentication changes
+  }, [isAuthenticated]);
   
-  // --- Firestore Handlers ---
+  // --- Firestore Handlers with Robust Fallback ---
+
+  const handleOperationError = (e: any, setLocal: any, data?: any, action: 'add' | 'update' | 'delete' = 'add') => {
+      console.error("Firebase Operation Error:", e);
+      
+      const confirmSwitch = confirm("Houve um erro de conexão com o servidor. Deseja alternar para o MODO OFFLINE/DEMO para salvar seus dados localmente e continuar trabalhando?");
+      
+      if (confirmSwitch) {
+          setIsDemoMode(true);
+          setPermissionError(true); // Trigger UI warning
+          
+          if (action === 'add' && data) {
+               setLocal((prev: any[]) => [...prev, { ...data, id: Math.random().toString() }]);
+          } else if (action === 'update' && data) {
+               setLocal((prev: any[]) => prev.map((i: any) => i.id === data.id ? data : i));
+          } else if (action === 'delete' && data) { // data is id here
+               setLocal((prev: any[]) => prev.filter((i: any) => i.id !== data));
+          }
+      } else {
+          alert("A operação falhou. Verifique sua conexão.");
+      }
+  };
 
   const genericAdd = async (coll: string, data: any, setLocal: any) => {
     if (isDemoMode) {
        setLocal((prev: any[]) => [...prev, { ...data, id: Math.random().toString() }]);
        return;
     }
-    try { await addDoc(collection(db, coll), data); } catch(e) { console.error(e); alert("Erro ao salvar. Verifique conexão."); }
+    try { 
+        await addDoc(collection(db, coll), data); 
+    } catch(e) { 
+        handleOperationError(e, setLocal, data, 'add');
+    }
   };
 
   const genericUpdate = async (coll: string, data: any, setLocal: any) => {
@@ -281,7 +294,12 @@ const App: React.FC = () => {
        setLocal((prev: any[]) => prev.map((i: any) => i.id === data.id ? data : i));
        return;
     }
-    try { const { id, ...rest } = data; await updateDoc(doc(db, coll, id), rest); } catch(e) { console.error(e); alert("Erro ao atualizar."); }
+    try { 
+        const { id, ...rest } = data; 
+        await updateDoc(doc(db, coll, id), rest); 
+    } catch(e) { 
+        handleOperationError(e, setLocal, data, 'update');
+    }
   };
 
   const genericDelete = async (coll: string, id: string, setLocal: any) => {
@@ -290,7 +308,11 @@ const App: React.FC = () => {
        setLocal((prev: any[]) => prev.filter((i: any) => i.id !== id));
        return;
     }
-    try { await deleteDoc(doc(db, coll, id)); } catch(e) { console.error(e); alert("Erro ao excluir."); }
+    try { 
+        await deleteDoc(doc(db, coll, id)); 
+    } catch(e) { 
+        handleOperationError(e, setLocal, id, 'delete');
+    }
   };
 
   // Specific Wrappers
@@ -460,9 +482,9 @@ const App: React.FC = () => {
       <main className="flex-1 overflow-y-auto bg-[#121212] relative w-full">
         {permissionError && (
           <div className="bg-red-600 text-white text-sm font-bold py-3 px-4 text-center flex flex-col md:flex-row items-center justify-center gap-2 shadow-lg animate-fade-in sticky top-0 z-50">
-            <AlertTriangle size={20} className="text-yellow-300" />
-            <span>BLOQUEIO DE SEGURANÇA: Permissão negada pelo banco.</span>
-            <span className="font-normal opacity-90">Verifique se a Autenticação Anônima está ativada no Firebase.</span>
+            <WifiOff size={20} className="text-white" />
+            <span>MODO OFFLINE ATIVADO: Erro de conexão com o servidor.</span>
+            <span className="font-normal opacity-90">Os dados estão sendo salvos localmente (Demo).</span>
           </div>
         )}
 
