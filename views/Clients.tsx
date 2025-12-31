@@ -57,7 +57,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
     setEditingId(client.id);
     setNewClient({
       name: client.name,
-      type: client.type,
+      // FIX: Adicionado fallback para 'INDIVIDUAL' caso o campo não exista no banco antigo
+      type: client.type || 'INDIVIDUAL',
       phone: client.phone,
       motorcycle: client.motorcycle,
       value: client.value.toString(),
@@ -104,7 +105,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({ clients, onAddClient, 
 
     const clientData = {
       name: newClient.name,
-      type: newClient.type,
+      // FIX: Garante que type nunca seja undefined
+      type: newClient.type || 'INDIVIDUAL',
       phone: newClient.phone,
       motorcycle: newClient.motorcycle,
       value: safeValue,

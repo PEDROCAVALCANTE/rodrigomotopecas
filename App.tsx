@@ -25,7 +25,7 @@ import {
   onSnapshot,
   setDoc
 } from 'firebase/firestore';
-import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
 
 const App: React.FC = () => {
   // --- Auth State ---
@@ -53,23 +53,33 @@ const App: React.FC = () => {
 
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // Check Local Storage for Auth
+  // --- Auth Listener ---
   useEffect(() => {
-    const storedAuth = localStorage.getItem('rodrigo_app_auth');
-    if (storedAuth === 'true') {
-      setIsAuthenticated(true);
-    }
-    setIsAuthChecking(false);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        setIsAuthenticated(true);
+      } else {
+        setIsAuthenticated(false);
+        // Não iniciamos Demo Mode aqui automaticamente para forçar o login seguro em produção
+      }
+      setIsAuthChecking(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleLogin = () => {
-    localStorage.setItem('rodrigo_app_auth', 'true');
-    setIsAuthenticated(true);
+    // A mudança de estado é controlada pelo onAuthStateChanged
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('rodrigo_app_auth');
-    setIsAuthenticated(false);
+    signOut(auth).then(() => {
+      setIsAuthenticated(false);
+      // Limpa dados locais sensíveis ao sair
+      setTransactions([]);
+      setClients([]);
+      setBudgets([]);
+    });
   };
 
   // --- Auto Logout on Inactivity (10 minutes) ---
@@ -113,7 +123,7 @@ const App: React.FC = () => {
 
   // --- Firebase Connection & Listeners ---
   useEffect(() => {
-    // Só conecta ao Firebase se estiver autenticado na tela de login
+    // Só conecta ao Firebase se estiver autenticado
     if (!isAuthenticated) return;
 
     let unsubscribeEmployees: () => void;
@@ -140,23 +150,23 @@ const App: React.FC = () => {
         console.error("Firebase Error:", error);
         if (error.code === 'permission-denied') {
             setPermissionError(true);
-            // Don't auto-start demo mode on read permission error alone, 
-            // wait for operation error to prompt user or just show warning
         } else if (error.code === 'unavailable') {
             setIsOffline(true);
             if (employees.length === 0) startDemoMode();
         } else {
-            startDemoMode();
+            // Outros erros
         }
     };
 
     const setupListeners = () => {
+        setIsLoading(true);
         // 1. Employees
         unsubscribeEmployees = onSnapshot(collection(db, 'employees'), 
           (snapshot) => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Employee));
             setEmployees(data);
             
+            // Seed inicial apenas se for admin logado e estiver vazio
             if (snapshot.empty && !snapshot.metadata.fromCache) {
                INITIAL_EMPLOYEES.forEach(async (emp) => {
                   const { id, ...empData } = emp;
@@ -183,7 +193,7 @@ const App: React.FC = () => {
             const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Transaction));
             data.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setTransactions(data);
-            setIsLoading(false);
+            setIsLoading(false); // Dados carregados
             setPermissionError(false);
           },
           handleFirebaseError
@@ -230,22 +240,9 @@ const App: React.FC = () => {
         );
     };
 
-    // --- AUTH FLOW ---
-    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
-        if (user) {
-            console.log("Usuário autenticado:", user.uid);
-            setupListeners();
-        } else {
-            console.log("Tentando login anônimo...");
-            signInAnonymously(auth).catch((error) => {
-                console.error("Erro no login anônimo:", error);
-                startDemoMode();
-            });
-        }
-    });
+    setupListeners();
 
     return () => {
-      unsubscribeAuth();
       if (unsubscribeEmployees) unsubscribeEmployees();
       if (unsubscribeClients) unsubscribeClients();
       if (unsubscribeTransactions) unsubscribeTransactions();
@@ -263,25 +260,15 @@ const App: React.FC = () => {
       let message = "Houve um erro de conexão com o servidor.";
     
       if (e.code === 'permission-denied') {
-        message = "ERRO DE PERMISSÃO: O banco de dados recusou a operação. Verifique as 'Regras de Segurança' no Console do Firebase (Firestore Rules) ou sua autenticação.";
+        message = "ERRO DE PERMISSÃO: Você não tem permissão para realizar esta ação. Verifique se está logado com a conta correta.";
       } else if (e.code === 'unavailable') {
         message = "Você está offline ou o servidor está indisponível.";
       }
 
-      const confirmSwitch = confirm(`${message}\n\nDeseja alternar para o MODO OFFLINE (Demo) para salvar seus dados localmente e continuar trabalhando?`);
+      alert(message);
       
-      if (confirmSwitch) {
-          setIsDemoMode(true);
-          setPermissionError(true); // Trigger UI warning
-          
-          if (action === 'add' && data) {
-               setLocal((prev: any[]) => [...prev, { ...data, id: Math.random().toString() }]);
-          } else if (action === 'update' && data) {
-               setLocal((prev: any[]) => prev.map((i: any) => i.id === data.id ? data : i));
-          } else if (action === 'delete' && data) { // data is id here
-               setLocal((prev: any[]) => prev.filter((i: any) => i.id !== data));
-          }
-      }
+      // Em produção real, evitamos mudar para DEMO automaticamente para não misturar dados
+      // Mas se for erro de rede (offline), o Firestore gerencia o cache localmente
   };
 
   const validateData = (data: any) => {
@@ -504,8 +491,7 @@ const App: React.FC = () => {
         {permissionError && (
           <div className="bg-red-600 text-white text-sm font-bold py-3 px-4 text-center flex flex-col md:flex-row items-center justify-center gap-2 shadow-lg animate-fade-in sticky top-0 z-50">
             <WifiOff size={20} className="text-white" />
-            <span>MODO OFFLINE ATIVADO: Erro de conexão com o servidor.</span>
-            <span className="font-normal opacity-90">Os dados estão sendo salvos localmente (Demo).</span>
+            <span>ERRO DE PERMISSÃO: Faça login com o usuário autorizado.</span>
           </div>
         )}
 

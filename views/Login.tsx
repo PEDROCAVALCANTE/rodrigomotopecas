@@ -1,31 +1,45 @@
 
 import React, { useState } from 'react';
 import { User, Lock, ArrowRight, Wrench, AlertCircle } from 'lucide-react';
+import { auth } from '../firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
 
 interface LoginProps {
   onLogin: () => void;
 }
 
 export const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
 
-    // Simular um pequeno delay para UX
-    setTimeout(() => {
-      if (username === 'admin' && password === 'rodrigomoto@123') {
-        onLogin();
-      } else {
-        setError('Usuário ou senha incorretos.');
-        setIsLoading(false);
+    try {
+      // Autenticação REAL no Firebase
+      await signInWithEmailAndPassword(auth, email, password);
+      // O onAuthStateChanged no App.tsx vai detectar o login e mudar a tela
+      onLogin(); 
+    } catch (err: any) {
+      console.error("Erro no login:", err);
+      let msg = "Falha ao entrar. Verifique suas credenciais.";
+      
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        msg = "E-mail ou senha incorretos.";
+      } else if (err.code === 'auth/too-many-requests') {
+        msg = "Muitas tentativas falhas. Tente novamente mais tarde.";
+      } else if (err.code === 'auth/network-request-failed') {
+        msg = "Erro de conexão. Verifique sua internet.";
       }
-    }, 600);
+
+      setError(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -55,17 +69,17 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
             <form onSubmit={handleSubmit} className="space-y-5">
               
               <div>
-                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Usuário</label>
+                <label className="block text-xs font-bold text-gray-400 mb-1.5 uppercase tracking-wide">E-mail</label>
                 <div className="relative group">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <User className="h-5 w-5 text-gray-500 group-focus-within:text-orange-500 transition-colors" />
                   </div>
                   <input
-                    type="text"
+                    type="email"
                     className="w-full bg-[#111] border border-gray-700 text-white pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-gray-600"
-                    placeholder="Digite seu usuário"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="admin@rodrigo.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     required
                   />
                 </div>
@@ -80,7 +94,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   <input
                     type="password"
                     className="w-full bg-[#111] border border-gray-700 text-white pl-10 pr-4 py-3 rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all placeholder-gray-600"
-                    placeholder="Digite sua senha"
+                    placeholder="Sua senha segura"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -103,7 +117,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    Entrando...
+                    Conectando...
                   </span>
                 ) : (
                   <>
